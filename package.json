@@ -1,7 +1,32 @@
 {
-  "name": "btc-3d",
+  "name": "bitcoin-city",
   "version": "0.0.0",
   "private": true,
+  "description": "The bitcoin blockchain, live, as a 3D city.",
+  "keywords": [
+    "3d",
+    "bitcoin",
+    "blockchain",
+    "explorer",
+    "mempool",
+    "react-three-fiber",
+    "threejs",
+    "visualization"
+  ],
+  "homepage": "https://mempool.psycarlo.com",
+  "bugs": {
+    "url": "https://github.com/Psycarlo/bitcoin-city/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Psycarlo",
+    "email": "psycarlo1@gmail.com",
+    "url": "https://psycarlo.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Psycarlo/bitcoin-city.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
