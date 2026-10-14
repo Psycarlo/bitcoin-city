@@ -42,6 +42,23 @@ const reveal = (x: number, y: number, radius: number) => {
 };
 
 /**
+ * Switches at once, with transitions held off for a frame: every colour
+ * changes together, so they would all fade at once and smear the switch.
+ */
+const switchAtOnce = (apply: () => void) => {
+  const root = document.documentElement;
+  root.dataset.themeSwitch = "";
+  apply();
+  // Reading layout commits the new colours while transitions are still off.
+  void root.offsetHeight;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      delete root.dataset.themeSwitch;
+    });
+  });
+};
+
+/**
  * Switches the theme with a view transition: the new theme grows out of
  * `origin` as a circle over the old one, which sinks back a touch as it is
  * covered. Browsers without view transitions (or with reduced motion asked
@@ -54,7 +71,7 @@ export const switchTheme = async (theme: Theme, origin?: Origin) => {
     });
   };
   if (!document.startViewTransition || reducedMotion()) {
-    apply();
+    switchAtOnce(apply);
     return;
   }
   const x = origin?.x ?? globalThis.innerWidth / 2;

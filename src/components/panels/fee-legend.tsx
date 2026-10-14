@@ -8,7 +8,7 @@ const GRADIENT = feeGradient();
 export const FeeLegend = ({ className }: { className?: string }) => (
   <div
     className={cn(
-      "bg-card/90 ring-foreground/5 pointer-events-auto flex items-center gap-3 rounded-full py-1.5 pr-4 pl-3.5 shadow-sm ring-1 shadow-black/5 backdrop-blur-md",
+      "bg-card/90 ring-foreground/5 dark:ring-foreground/10 pointer-events-auto flex items-center gap-3 rounded-full py-1.5 pr-4 pl-3.5 shadow-sm ring-1 shadow-black/5 backdrop-blur-md",
       className
     )}
   >

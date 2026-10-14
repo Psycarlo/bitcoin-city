@@ -13,6 +13,7 @@ import { BLOCK_VSIZE } from "@/lib/bitcoin";
 import { feeColour, feeGradient } from "@/lib/fees";
 import {
   formatAgo,
+  formatCount,
   formatHeight,
   formatNumber,
   formatRate,
@@ -139,7 +140,7 @@ const PoolAvatar = ({ block }: { block: Block }) => (
 
 const NewTag = () => (
   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 px-1.5 text-[10px] font-semibold tracking-wide text-emerald-700 uppercase dark:bg-emerald-500/20 dark:text-emerald-300">
-    <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
+    <span className="size-1.5 rounded-full bg-emerald-500 motion-safe:animate-pulse" />
     New
   </span>
 );
@@ -163,7 +164,7 @@ const BlockRow = ({ arrived, block, now, selected }: BlockRowProps) => (
           {arrived !== undefined && now - arrived < NEW_FOR ? <NewTag /> : null}
         </>
       }
-      sub={`${block.pool?.name ?? "Unknown miner"} · ${formatNumber(block.txCount)} txs`}
+      sub={`${block.pool?.name ?? "Unknown miner"} · ${formatCount(block.txCount, "tx", "txs")}`}
     />
     <span className="shrink-0 text-right">
       <FeeTag rate={block.medianFee} />
@@ -197,7 +198,7 @@ const ProjectedRow = ({ block, index, selected }: ProjectedRowProps) => (
     <Lines
       className="flex-1"
       main={projectedTitle(index)}
-      sub={`${formatNumber(block.txCount)} txs · ${formatVsize(block.vsize)}`}
+      sub={`${formatCount(block.txCount, "tx", "txs")} · ${formatVsize(block.vsize)}`}
     />
     <span className="shrink-0 text-right">
       <FeeTag rate={block.medianFee} />
@@ -238,7 +239,7 @@ const BacklogRow = ({
             </span>
           </>
         }
-        sub={`${formatNumber(txs)} txs · ${formatVsize(vsize)}`}
+        sub={`${formatCount(txs, "tx", "txs")} · ${formatVsize(vsize)}`}
       />
       {front ? (
         <span className="shrink-0 text-right">

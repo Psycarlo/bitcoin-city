@@ -7,6 +7,7 @@ import {
   formatBtc,
   formatBytes,
   formatCompact,
+  formatCount,
   formatDifficulty,
   formatDuration,
   formatElapsed,
@@ -34,6 +35,12 @@ describe("numbers", () => {
     expect(formatNumber(1234.6)).toBe("1,235");
     expect(formatCompact(81_700)).toBe("81.7K");
     expect(formatHeight(970_182)).toBe("#970,182");
+  });
+
+  test("counts in the singular for one", () => {
+    expect(formatCount(1, "tx", "txs")).toBe("1 tx");
+    expect(formatCount(0, "tx", "txs")).toBe("0 txs");
+    expect(formatCount(2500, "tx", "txs")).toBe("2,500 txs");
   });
 
   test("writes dollars", () => {

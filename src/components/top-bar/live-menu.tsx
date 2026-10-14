@@ -77,7 +77,7 @@ const labelOf = (signal: Signal, statuses: readonly FeedStatus[]) =>
 const StatusDot = ({ signal }: { signal: Signal }) => (
   <span className="relative flex size-2">
     {signal === "ok" ? (
-      <span className="absolute inline-flex size-full animate-ping rounded-full bg-current opacity-60" />
+      <span className="absolute inline-flex size-full rounded-full bg-current opacity-60 motion-safe:animate-ping" />
     ) : null}
     <span
       className={cn(

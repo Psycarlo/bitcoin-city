@@ -11,6 +11,10 @@ import { switchTheme } from "@/lib/theme-transition";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/stores/theme-store";
 
+/** The sun and the moon cross-fade where they stand. */
+const ICON =
+  "absolute size-[18px] transition-[opacity,filter,scale] duration-300 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none";
+
 /** Day or night: the new theme grows out of the button, over the old one. */
 export const ThemeToggle = () => {
   const theme = useTheme();
@@ -38,15 +42,17 @@ export const ThemeToggle = () => {
       >
         <Sun
           className={cn(
-            "absolute size-[18px] transition-all duration-500",
-            dark ? "scale-50 -rotate-90 opacity-0" : "scale-100 rotate-0"
+            ICON,
+            dark ? "scale-[0.25] opacity-0 blur-xs" : "scale-100"
           )}
+          data-theme-icon
         />
         <Moon
           className={cn(
-            "absolute size-[18px] transition-all duration-500",
-            dark ? "scale-100 rotate-0" : "scale-50 rotate-90 opacity-0"
+            ICON,
+            dark ? "scale-100" : "scale-[0.25] opacity-0 blur-xs"
           )}
+          data-theme-icon
         />
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>

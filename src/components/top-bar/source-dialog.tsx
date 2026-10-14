@@ -132,7 +132,9 @@ const SourceForm = () => {
           API address
         </label>
         <Input
-          aria-describedby="source-hint"
+          aria-describedby={
+            check.state === "failed" ? "source-error" : undefined
+          }
           aria-invalid={check.state === "failed" || undefined}
           autoComplete="url"
           id="source-address"
@@ -144,14 +146,14 @@ const SourceForm = () => {
           value={address}
         />
         {check.state === "failed" ? (
-          <p className="text-destructive text-xs" role="alert">
+          <p
+            className="text-destructive text-xs"
+            id="source-error"
+            role="alert"
+          >
             {check.message}
           </p>
-        ) : (
-          <p className="text-muted-foreground text-xs" id="source-hint">
-            e.g. https://mempool.second.tech/api or mempool.space/testnet4
-          </p>
-        )}
+        ) : null}
         {source.kind === "esplora" ? (
           <p className="text-muted-foreground flex items-start gap-2 text-xs text-pretty">
             <Info className="mt-px size-3.5 shrink-0" />

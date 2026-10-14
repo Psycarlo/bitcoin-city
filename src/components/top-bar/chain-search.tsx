@@ -21,8 +21,8 @@ import { COINBASE_COLOUR, feeColour } from "@/lib/fees";
 import {
   formatAgo,
   formatBtc,
+  formatCount,
   formatHeight,
-  formatNumber,
   formatRate,
   shortId,
 } from "@/lib/format";
@@ -81,7 +81,7 @@ const viewOf = (hit: SearchHit, { failed, now, tip }: ViewContext): HitView => {
       return {
         Icon: Box,
         colour: feeColour(block.medianFee),
-        detail: `${block.pool?.name ?? "Unknown miner"} · ${formatNumber(block.txCount)} txs`,
+        detail: `${block.pool?.name ?? "Unknown miner"} · ${formatCount(block.txCount, "tx", "txs")}`,
         title: `Block ${formatHeight(block.height)}`,
         trailing: formatAgo(block.time, now),
       };
@@ -109,7 +109,7 @@ const viewOf = (hit: SearchHit, { failed, now, tip }: ViewContext): HitView => {
       return {
         Icon: Layers,
         colour: feeColour(block.medianFee),
-        detail: `${tip === undefined ? "In the mempool" : `Block ${formatHeight(tip + index + 1)}`} · ${formatNumber(block.txCount)} txs`,
+        detail: `${tip === undefined ? "In the mempool" : `Block ${formatHeight(tip + index + 1)}`} · ${formatCount(block.txCount, "tx", "txs")}`,
         title: projectedTitle(index),
         trailing: `~${formatRate(block.medianFee)} sat/vB`,
       };

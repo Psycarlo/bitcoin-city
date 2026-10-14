@@ -45,7 +45,7 @@ export const DetailPanel = ({ className }: { className?: string }) => {
     <Panel
       aria-label={LABELS[selection.kind]}
       className={cn(
-        "animate-in fade-in slide-in-from-right-6 flex flex-col overflow-hidden duration-300 ease-out",
+        "animate-in fade-in max-lg:slide-in-from-bottom-4 lg:slide-in-from-right-6 flex flex-col overflow-hidden duration-300 ease-out",
         className
       )}
     >

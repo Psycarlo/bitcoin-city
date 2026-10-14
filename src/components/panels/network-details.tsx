@@ -11,6 +11,7 @@ import {
   formatAgo,
   formatBtc,
   formatBytes,
+  formatCount,
   formatDifficulty,
   formatDuration,
   formatElapsed,
@@ -139,7 +140,7 @@ export const NetworkDetailsView = () => {
     [
       "Mempool",
       mempool
-        ? `${formatNumber(mempool.count)} txs · ${formatVsize(mempool.vsize)}`
+        ? `${formatCount(mempool.count, "tx", "txs")} · ${formatVsize(mempool.vsize)}`
         : undefined,
     ],
     [

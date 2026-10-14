@@ -8,7 +8,7 @@ export const Brand = ({ compact = false }: { compact?: boolean }) => (
     </span>
     {compact ? null : (
       <span className="hidden text-[15px] font-semibold tracking-tight xl:block">
-        BlockCity
+        Bitcoin City
       </span>
     )}
   </div>

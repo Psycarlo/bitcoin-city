@@ -1,6 +1,6 @@
 import { Line } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   BoxGeometry,
   Color,
@@ -21,13 +21,14 @@ import { COVERED_CLASSES, declutterRef } from "../declutter";
 import { roundedSlab } from "../geometry";
 import { SceneHtml } from "../html-layer";
 import { PAD_TOP, TERRACE } from "../layout";
-import { paint, track } from "../paint";
+import { onPalette, paint, track } from "../paint";
 import { usePalette } from "../palette";
 
 /**
  * The price, as a skyline behind the chain: one tower per candle, newest on
  * the right, its crown spanning the open and close (green up, red down) and
- * its mast the high and low. A dashed line marks the latest trade.
+ * its mast the high and low. A dashed line marks the latest trade. Towers
+ * ease to each trade, slide west as a candle opens and the new one rises.
  */
 const COUNT = 60;
 /** Room at the west end for the pair's sign, and at the east for the price. */
@@ -43,6 +44,14 @@ const HIGH_Y = 360;
 const RANGE_PAD = 0.06;
 /** How fast the scale follows the prices (per second). */
 const RESCALE = 3;
+/**
+ * How fast the towers and the price line follow the trades, slide west as a
+ * candle opens, and a new tower rises (per second).
+ */
+const FOLLOW = 8;
+/** Close enough to stop easing: a slide (units) and a rise (share). */
+const SLIDE_SNAP = 0.05;
+const RISE_SNAP = 0.001;
 const MAX_STEP = 0.1;
 const SMALLEST_BODY = 1.5;
 const LINE_DASH = { gap: 8, size: 12 } as const;
@@ -71,6 +80,9 @@ const matrix = new Matrix4();
 const where = new Vector3();
 const size = new Vector3();
 const upright = new Quaternion();
+const reducedMotion = globalThis.matchMedia?.(
+  "(prefers-reduced-motion: reduce)"
+);
 
 /** The raised strip the skyline stands on, behind the oldest blocks. */
 export const Terrace = () => (
@@ -81,17 +93,6 @@ export const Terrace = () => (
     receiveShadow
   />
 );
-
-interface Scale {
-  candles?: readonly Candle[];
-  high: number;
-  low: number;
-  /** Where the scale is going. */
-  goalHigh: number;
-  goalLow: number;
-  /** The towers need placing again. */
-  stale: boolean;
-}
 
 const rangeOf = (candles: readonly Candle[]) => {
   let low = Number.POSITIVE_INFINITY;
@@ -107,6 +108,137 @@ const rangeOf = (candles: readonly Candle[]) => {
 const approach = (from: number, to: number, step: number, snap: number) => {
   const next = from + (to - from) * step;
   return Math.abs(to - next) < snap ? to : next;
+};
+
+/** What a tower shows: its candle's prices as they ease in, and how far it has risen. */
+interface Tower {
+  close: number;
+  high: number;
+  low: number;
+  open: number;
+  /** 0 when its candle just opened, 1 once it stands. */
+  rise: number;
+  time: number;
+}
+
+interface Scale {
+  candles?: readonly Candle[];
+  high: number;
+  low: number;
+  /** Where the scale is going. */
+  goalHigh: number;
+  goalLow: number;
+  /** How far east of their places the towers stand (units), as a candle opens. */
+  slide: number;
+  /** The towers need placing again. */
+  stale: boolean;
+  /** The towers as drawn, oldest first, one per candle on show. */
+  towers: Tower[];
+}
+
+const towerOf = (candle: Candle, rise: number): Tower => ({
+  close: candle.close,
+  high: candle.high,
+  low: candle.low,
+  open: candle.open,
+  rise,
+  time: candle.time,
+});
+
+/**
+ * Carries the towers over to the candles now on show. Within an interval
+ * they keep what they show and slide west as a candle opens, the new one
+ * rising beside them; on another interval each tower turns into the one now
+ * in its place. The first candles stand at once.
+ */
+const realign = (scale: Scale, candles: readonly Candle[]) => {
+  const { towers } = scale;
+  const newest = towers.at(-1)?.time;
+  const place =
+    newest === undefined
+      ? -1
+      : candles.findIndex((candle) => candle.time === newest);
+  if (place >= 0) {
+    const byTime = new Map(towers.map((tower) => [tower.time, tower]));
+    scale.towers = candles.map(
+      (candle, index) =>
+        byTime.get(candle.time) ?? towerOf(candle, index > place ? 0 : 1)
+    );
+    scale.slide += (candles.length - 1 - place) * PITCH;
+    return;
+  }
+  // Lined up from the east, where the newest stand.
+  const shift = candles.length - towers.length;
+  scale.towers = candles.map((candle, index) => {
+    const before = towers[index - shift];
+    if (before) {
+      return { ...before, time: candle.time };
+    }
+    return towerOf(candle, towers.length > 0 ? 0 : 1);
+  });
+};
+
+/** Eases a tower towards its candle; whether it moved. */
+const easeTower = (
+  tower: Tower,
+  candle: Candle,
+  step: number,
+  snap: number
+) => {
+  const { close, high, low, open, rise } = tower;
+  tower.open = approach(open, candle.open, step, snap);
+  tower.close = approach(close, candle.close, step, snap);
+  tower.high = approach(high, candle.high, step, snap);
+  tower.low = approach(low, candle.low, step, snap);
+  tower.rise = approach(rise, 1, step, RISE_SNAP);
+  return (
+    tower.open !== open ||
+    tower.close !== close ||
+    tower.high !== high ||
+    tower.low !== low ||
+    tower.rise !== rise
+  );
+};
+
+/** Picks up new candles: the scale sets off for their range, the towers line up with them. */
+const takeCandles = (scale: Scale, all: readonly Candle[] | undefined) => {
+  if (all === scale.candles) {
+    return;
+  }
+  const fresh = scale.candles === undefined;
+  scale.candles = all;
+  scale.stale = true;
+  const candles = all?.slice(-COUNT) ?? [];
+  realign(scale, candles);
+  if (candles.length === 0) {
+    return;
+  }
+  const range = rangeOf(candles);
+  scale.goalHigh = range.high;
+  scale.goalLow = range.low;
+  if (fresh) {
+    scale.high = range.high;
+    scale.low = range.low;
+  }
+};
+
+/** Eases the scale, the slide and each tower a frame on; whether anything moved. */
+const ease = (scale: Scale, rescale: number, follow: number) => {
+  const snap = (scale.goalHigh - scale.goalLow) * 0.0005;
+  const { high, low, slide, towers } = scale;
+  scale.low = approach(low, scale.goalLow, rescale, snap);
+  scale.high = approach(high, scale.goalHigh, rescale, snap);
+  scale.slide = approach(slide, 0, follow, SLIDE_SNAP);
+  let moved = scale.low !== low || scale.high !== high || scale.slide !== slide;
+  const all = scale.candles ?? [];
+  const offset = all.length - towers.length;
+  for (const [index, tower] of towers.entries()) {
+    const candle = all[offset + index];
+    if (candle && easeTower(tower, candle, follow, snap)) {
+      moved = true;
+    }
+  }
+  return moved;
 };
 
 const PriceTag = () => {
@@ -159,12 +291,23 @@ export const Skyline = () => {
     goalLow: 0,
     high: 1,
     low: 0,
+    slide: 0,
     stale: true,
+    towers: [],
   });
   const interval = useViewStore((state) => state.interval);
   const palette = usePalette();
   const linePoints = useMemo(
     () => [new Vector3(WEST - PITCH / 2, 0, 0), new Vector3(EAST + 12, 0, 0)],
+    []
+  );
+
+  // Instance colours are copies: a new theme paints them again.
+  useEffect(
+    () =>
+      onPalette(() => {
+        scaleRef.current.stale = true;
+      }),
     []
   );
 
@@ -177,45 +320,33 @@ export const Skyline = () => {
       return;
     }
     const scale = scaleRef.current;
-    const all = usePriceStore.getState().candles[interval];
-    if (all !== scale.candles) {
-      const fresh = scale.candles === undefined;
-      scale.candles = all;
-      scale.stale = true;
-      if (all && all.length > 0) {
-        const range = rangeOf(all.slice(-COUNT));
-        scale.goalHigh = range.high;
-        scale.goalLow = range.low;
-        if (fresh) {
-          scale.high = range.high;
-          scale.low = range.low;
-        }
-      }
-    }
-    const candles = scale.candles?.slice(-COUNT) ?? [];
-    const snap = (scale.goalHigh - scale.goalLow) * 0.0005;
-    const step = 1 - Math.exp(-RESCALE * Math.min(delta, MAX_STEP));
-    const low = approach(scale.low, scale.goalLow, step, snap);
-    const high = approach(scale.high, scale.goalHigh, step, snap);
-    if (!scale.stale && low === scale.low && high === scale.high) {
+    takeCandles(scale, usePriceStore.getState().candles[interval]);
+    const seconds = Math.min(delta, MAX_STEP);
+    const still = reducedMotion?.matches ?? false;
+    const moved = ease(
+      scale,
+      still ? 1 : 1 - Math.exp(-RESCALE * seconds),
+      still ? 1 : 1 - Math.exp(-FOLLOW * seconds)
+    );
+    if (!(moved || scale.stale)) {
       return;
     }
-    scale.low = low;
-    scale.high = high;
     scale.stale = false;
+    const { high, low, slide, towers } = scale;
     const span = Math.max(high - low, Number.EPSILON);
     const yOf = (price: number) =>
       LOW_Y + ((price - low) / span) * (HIGH_Y - LOW_Y);
 
-    const first = COUNT - candles.length;
-    for (const [index, candle] of candles.entries()) {
-      const x = WEST + (first + index + 0.5) * PITCH;
-      const bottom = yOf(Math.min(candle.open, candle.close));
+    const first = COUNT - towers.length;
+    for (const [index, tower] of towers.entries()) {
+      const x = WEST + (first + index + 0.5) * PITCH + slide;
+      const { rise } = tower;
+      const bottom = yOf(Math.min(tower.open, tower.close)) * rise;
       const top = Math.max(
-        yOf(Math.max(candle.open, candle.close)),
-        bottom + SMALLEST_BODY
+        yOf(Math.max(tower.open, tower.close)) * rise,
+        bottom + SMALLEST_BODY * rise
       );
-      const colour = candle.close >= candle.open ? UP : DOWN;
+      const colour = tower.close >= tower.open ? UP : DOWN;
       stems.setMatrixAt(
         index,
         matrix.compose(
@@ -233,25 +364,26 @@ export const Skyline = () => {
         )
       );
       crowns.setColorAt(index, colour);
-      const mastLow = yOf(candle.low);
+      const mastLow = yOf(tower.low) * rise;
       masts.setMatrixAt(
         index,
         matrix.compose(
           where.set(x, mastLow, 0),
           upright,
-          size.set(MAST, Math.max(yOf(candle.high) - mastLow, 0.1), MAST)
+          size.set(MAST, Math.max(yOf(tower.high) * rise - mastLow, 0.1), MAST)
         )
       );
       masts.setColorAt(index, colour);
     }
     for (const mesh of [stems, masts, crowns]) {
-      mesh.count = candles.length;
+      mesh.count = towers.length;
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) {
         mesh.instanceColor.needsUpdate = true;
       }
     }
-    const latest = candles.at(-1);
+    // The line keeps to the price, not to a tower still rising.
+    const latest = towers.at(-1);
     line.visible = latest !== undefined;
     if (latest) {
       line.position.y = yOf(latest.close);

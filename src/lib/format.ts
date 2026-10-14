@@ -48,6 +48,10 @@ export const DASH = "—";
 export const formatNumber = (value: number) =>
   numberFormat.format(Math.round(value));
 
+/** "1 tx", "2,500 txs". */
+export const formatCount = (count: number, one: string, many: string) =>
+  `${formatNumber(count)} ${Math.round(count) === 1 ? one : many}`;
+
 /** "81.7K". */
 export const formatCompact = (value: number) => compactFormat.format(value);
 

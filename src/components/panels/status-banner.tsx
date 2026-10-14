@@ -56,7 +56,7 @@ export const StatusBanner = ({ className }: { className?: string }) => {
         "pointer-events-auto flex w-fit items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium shadow-sm ring-1 backdrop-blur-md",
         warning
           ? "bg-amber-50/95 text-amber-800 ring-amber-600/20 dark:bg-amber-950/90 dark:text-amber-200 dark:ring-amber-400/25"
-          : "bg-card/95 text-muted-foreground ring-foreground/5",
+          : "bg-card/95 text-muted-foreground ring-foreground/5 dark:ring-foreground/10",
         className
       )}
     >
