@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 export const Panel = ({ className, ...props }: ComponentProps<"section">) => (
   <section
     className={cn(
-      "pointer-events-auto rounded-2xl bg-white/95 shadow-sm ring-1 shadow-slate-900/5 ring-slate-900/5 backdrop-blur-md",
+      "bg-card/95 ring-foreground/5 dark:ring-foreground/10 pointer-events-auto rounded-2xl shadow-sm ring-1 shadow-black/5 backdrop-blur-md",
       className
     )}
     {...props}

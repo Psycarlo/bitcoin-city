@@ -5,17 +5,8 @@ import {
   Shape,
 } from "three";
 
-/**
- * A slab with rounded corners, centred on the origin with its top at y = 0
- * (it hangs below). Its caps and sides are separate groups, for a material
- * each.
- */
-export const roundedSlab = (
-  width: number,
-  depth: number,
-  radius: number,
-  thickness: number
-) => {
+/** A rectangle with rounded corners, centred on the origin (in x–y). */
+const roundedRect = (width: number, depth: number, radius: number) => {
   const r = Math.min(radius, width / 2, depth / 2);
   const [left, right] = [-width / 2, width / 2];
   const [near, far] = [-depth / 2, depth / 2];
@@ -29,8 +20,23 @@ export const roundedSlab = (
   shape.absarc(left + r, far - r, r, Math.PI / 2, Math.PI, false);
   shape.lineTo(left, near + r);
   shape.absarc(left + r, near + r, r, Math.PI, Math.PI * 1.5, false);
+  return shape;
+};
+
+/**
+ * A slab with rounded corners, centred on the origin with its top at y = 0
+ * (it hangs below). Its caps and sides are separate groups, for a material
+ * each.
+ */
+export const roundedSlab = (
+  width: number,
+  depth: number,
+  radius: number,
+  thickness: number
+) => {
+  const r = Math.min(radius, width / 2, depth / 2);
   const bevel = Math.min(r / 4, thickness / 3);
-  const geometry = new ExtrudeGeometry(shape, {
+  const geometry = new ExtrudeGeometry(roundedRect(width, depth, r), {
     bevelEnabled: true,
     bevelSegments: 4,
     bevelSize: bevel,
@@ -41,6 +47,30 @@ export const roundedSlab = (
   // The shape lies in x–y and extrudes along z: stand it up, top at y = 0.
   geometry.rotateX(-Math.PI / 2);
   geometry.translate(0, -(thickness + bevel), 0);
+  return geometry;
+};
+
+/**
+ * A slab whose flat top (the size given, at y = 0) rolls down to its sides
+ * over `slope` outwards and `drop` downwards, as a quarter ellipse: a
+ * beach, sloping into the sea. Its sides go on down `thickness` further.
+ */
+export const shoreSlab = (
+  width: number,
+  depth: number,
+  radius: number,
+  { drop, slope, thickness }: { drop: number; slope: number; thickness: number }
+) => {
+  const geometry = new ExtrudeGeometry(roundedRect(width, depth, radius), {
+    bevelEnabled: true,
+    bevelSegments: 10,
+    bevelSize: slope,
+    bevelThickness: drop,
+    curveSegments: 16,
+    depth: thickness,
+  });
+  geometry.rotateX(-Math.PI / 2);
+  geometry.translate(0, -(thickness + drop), 0);
   return geometry;
 };
 

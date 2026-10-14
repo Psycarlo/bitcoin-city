@@ -5,6 +5,8 @@ import { Vector3 } from "three";
 import type { DirectionalLight } from "three";
 
 import { clamp } from "@/lib/collections";
+import { useTheme } from "@/stores/theme-store";
+import type { Theme } from "@/stores/theme-store";
 
 import { TILE } from "./layout";
 import { invalidateShadows } from "./shadows";
@@ -12,10 +14,32 @@ import { invalidateShadows } from "./shadows";
 /** Where the sun shines from (south-west, high up), as a direction. */
 const SUN = new Vector3(-0.6, 0.8, 0.5).normalize();
 const SUN_DISTANCE = 5000;
-const SUN_INTENSITY = 2.2;
-const SKY_INTENSITY = 1.45;
-const SKY_COLOUR = "#ffffff";
-const GROUND_COLOUR = "#cbd5e1";
+/** Daylight, or a cool moon over a dim sky. */
+const LIGHTING: Record<
+  Theme,
+  {
+    ground: string;
+    sky: string;
+    skyIntensity: number;
+    sun: string;
+    sunIntensity: number;
+  }
+> = {
+  dark: {
+    ground: "#0b1220",
+    sky: "#9fb6e6",
+    skyIntensity: 1.05,
+    sun: "#c9d8ff",
+    sunIntensity: 1.3,
+  },
+  light: {
+    ground: "#cbd5e1",
+    sky: "#ffffff",
+    skyIntensity: 1.45,
+    sun: "#ffffff",
+    sunIntensity: 2.2,
+  },
+};
 const SHADOW_MAP_SIZE = 4096;
 /**
  * The shadows cover what is in view, and a margin: close up, the shadow map
@@ -44,8 +68,9 @@ interface Fit {
   z: number;
 }
 
-/** Soft daylight from the sky, and a sun whose shadows follow the view. */
+/** Soft light from the sky, and a sun (or moon) whose shadows follow the view. */
 export const Lights = () => {
+  const lighting = LIGHTING[useTheme()];
   const lightRef = useRef<DirectionalLight>(null);
   const fitRef = useRef<Fit>({ reach: 0, x: 0, z: 0 });
 
@@ -93,10 +118,15 @@ export const Lights = () => {
 
   return (
     <>
-      <hemisphereLight args={[SKY_COLOUR, GROUND_COLOUR, SKY_INTENSITY]} />
+      <hemisphereLight
+        color={lighting.sky}
+        groundColor={lighting.ground}
+        intensity={lighting.skyIntensity}
+      />
       <directionalLight
         castShadow
-        intensity={SUN_INTENSITY}
+        color={lighting.sun}
+        intensity={lighting.sunIntensity}
         ref={lightRef}
         shadow-bias={-0.0004}
         shadow-camera-near={1}

@@ -8,6 +8,9 @@ import type { SceneKey } from "@/lib/scene-key";
 
 export type ListTab = "blocks" | "mempool";
 
+/** Panels at the foot of the screen that fold away. */
+export type Dock = "blocks" | "price";
+
 /** Parts of the scene the user can switch on and off. */
 export interface SceneToggles {
   /** Takes the camera to each new block as it is found. */
@@ -18,6 +21,8 @@ export interface SceneToggles {
 }
 
 export interface ViewData {
+  /** Which docks are open. */
+  docks: Record<Dock, boolean>;
   hovered?: SceneKey;
   /** Candle length of the price chart and skyline. */
   interval: CandleInterval;
@@ -26,15 +31,20 @@ export interface ViewData {
   toggles: SceneToggles;
   /** Block holding the picked transaction, once known (it opens if sealed). */
   txBlock?: string;
+  /** Everything but the city tucked away. */
+  zen: boolean;
 }
 
 export interface ViewActions {
   hover: (key?: SceneKey) => void;
+  /** Opens or folds a dock (`open` omitted: the other way round). */
+  setDock: (dock: Dock, open?: boolean) => void;
   select: (key?: SceneKey) => void;
   setInterval: (interval: CandleInterval) => void;
   setTab: (tab: ListTab) => void;
   setTxBlock: (hash?: string) => void;
   toggle: (layer: keyof SceneToggles) => void;
+  toggleZen: () => void;
   /** Ends the hover of `key`, unless something else took it over meanwhile. */
   unhover: (key: SceneKey) => void;
 }
@@ -89,6 +99,11 @@ export const useViewStore = create<ViewStore>()(
             state.selected === selected ? {} : { selected, txBlock: undefined }
           );
         },
+        setDock: (dock, open) => {
+          set((state) => ({
+            docks: { ...state.docks, [dock]: open ?? !state.docks[dock] },
+          }));
+        },
         setInterval: (interval) => {
           set({ interval });
         },
@@ -103,10 +118,14 @@ export const useViewStore = create<ViewStore>()(
             toggles: { ...state.toggles, [layer]: !state.toggles[layer] },
           }));
         },
+        toggleZen: () => {
+          set((state) => ({ zen: !state.zen }));
+        },
         unhover: (key) => {
           set((state) => (state.hovered === key ? { hovered: undefined } : {}));
         },
       },
+      docks: { blocks: false, price: false },
       interval: "1m",
       tab: "blocks",
       toggles: {
@@ -115,6 +134,7 @@ export const useViewStore = create<ViewStore>()(
         skyline: true,
         trees: true,
       },
+      zen: false,
     }),
     {
       merge: (persisted, current) => {
@@ -122,6 +142,7 @@ export const useViewStore = create<ViewStore>()(
         return {
           ...current,
           ...saved,
+          docks: { ...current.docks, ...saved.docks },
           interval: isInterval(saved.interval)
             ? saved.interval
             : current.interval,
@@ -130,7 +151,13 @@ export const useViewStore = create<ViewStore>()(
         };
       },
       name: "blockcity.view",
-      partialize: ({ interval, tab, toggles }) => ({ interval, tab, toggles }),
+      partialize: ({ docks, interval, tab, toggles, zen }) => ({
+        docks,
+        interval,
+        tab,
+        toggles,
+        zen,
+      }),
       storage: createJSONStorage(() => globalThis.localStorage),
       version: 1,
     }

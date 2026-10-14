@@ -40,6 +40,7 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
+  --color-scene: var(--scene);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -83,6 +84,10 @@
   --sidebar-accent-foreground: oklch(0.218 0.008 223.9);
   --sidebar-border: oklch(0.925 0.005 214.3);
   --sidebar-ring: oklch(0.723 0.014 214.4);
+  /* Behind the 3D view while it loads, and its far sea. */
+  --scene: #cfe7ee;
+  --scrollbar: oklch(0.56 0.021 213.5 / 35%);
+  --scrollbar-hover: oklch(0.56 0.021 213.5 / 60%);
 }
 
 .dark {
@@ -118,6 +123,9 @@
   --sidebar-accent-foreground: oklch(0.987 0.002 197.1);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.56 0.021 213.5);
+  --scene: #0a1626;
+  --scrollbar: oklch(0.723 0.014 214.4 / 30%);
+  --scrollbar-hover: oklch(0.723 0.014 214.4 / 55%);
 }
 
 @layer base {
@@ -130,4 +138,58 @@
   html {
     @apply font-sans;
   }
+}
+
+/* Thin scrollbars without arrows. Chromium and Safari take the pseudo
+   elements (and ignore them once `scrollbar-width` is set, so that is left
+   to the rest). */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-color: var(--scrollbar) transparent;
+    scrollbar-width: thin;
+  }
+}
+
+::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
+  width: 0;
+}
+
+/* Theme switch: the new theme is revealed by a growing circle (see
+   theme-transition.ts), so neither snapshot cross-fades. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+  z-index: 1;
+}
+
+/* Colours jump straight to the new theme under the reveal. */
+[data-theme-switch] *,
+[data-theme-switch] *::before,
+[data-theme-switch] *::after {
+  transition: none !important;
 }

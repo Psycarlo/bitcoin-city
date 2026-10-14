@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import { fetchBlockSummary } from "@/data/mempool";
+import { fetchBlockSummary, UnsupportedError } from "@/data/mempool";
 import type { TxSummary } from "@/data/types";
 
 /** Block lists loaded at once (each is a few hundred kB). */
@@ -37,15 +37,19 @@ const keep = (summaries: SummaryStore["summaries"]) => {
   return Object.fromEntries(entries.slice(-KEEP));
 };
 
-/** Tries to load a block's list once; on failure it queues again after a wait. */
+/**
+ * Tries to load a block's list once; on failure it queues again after a
+ * wait, unless the source cannot serve such lists at all.
+ */
 const run = async ({ attempt, hash }: Job, next: () => void) => {
   try {
     const txs = await fetchBlockSummary(hash);
     useSummaryStore.setState((state) => ({
       summaries: keep({ ...state.summaries, [hash]: txs }),
     }));
-  } catch {
-    const delay = RETRIES[attempt];
+  } catch (error) {
+    const delay =
+      error instanceof UnsupportedError ? undefined : RETRIES[attempt];
     if (delay === undefined) {
       // Given up for now: asking again later tries again.
       requested.delete(hash);

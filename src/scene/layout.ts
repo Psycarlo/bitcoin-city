@@ -50,16 +50,49 @@ export const TERRACE = {
 /** Highest point of the skyline (its price label included). */
 export const SKYLINE_TOP = 420;
 
-/** Border of ground around the grid and the terrace. */
-export const MARGIN = 150;
+/** Road around the grid, outside its outer plots (the avenues between plots are `GAP` wide). */
+export const RING_ROAD = 44;
 
-/** The table everything stands on. */
+/** Border of grass around the grid (its ring road included) and the terrace. */
+export const MARGIN = 230;
+
+/** The island's grass top, everything stands on. */
 export const TILE = {
   maxX: GRID_HALF_X + MARGIN,
   maxZ: GRID_HALF_Z + MARGIN,
   minX: -GRID_HALF_X - MARGIN,
   minZ: TERRACE.centreZ - TERRACE.depth / 2 - MARGIN,
 } as const;
+
+/** Rounding of the grass top's corners. */
+export const TILE_RADIUS = 96;
+/** Height of the grass above the sand. */
+export const GRASS_DEPTH = 6;
+/** Flat sand around the grass, before the beach slopes into the sea… */
+export const BEACH_FLAT = 34;
+/** …over this much (out) and this much (down). */
+export const BEACH_SLOPE = 72;
+export const BEACH_DROP = 30;
+/** Rest height of the sea, part way down the beach's slope. */
+export const WATER_Y = -18;
+
+/** The island's outline in plan: its centre, half its size and corner radius. */
+export const ISLAND = {
+  centreX: (TILE.minX + TILE.maxX) / 2,
+  centreZ: (TILE.minZ + TILE.maxZ) / 2,
+  halfX: (TILE.maxX - TILE.minX) / 2,
+  halfZ: (TILE.maxZ - TILE.minZ) / 2,
+  radius: TILE_RADIUS,
+} as const;
+
+/**
+ * Where the shore meets the sea at rest, out from the grass edge: the beach's
+ * slope is a quarter ellipse, from the flat sand down to below the water.
+ */
+const shoreAngle = Math.acos(
+  (BEACH_DROP - (-GRASS_DEPTH - WATER_Y)) / BEACH_DROP
+);
+export const SHORE_OUT = BEACH_FLAT + BEACH_SLOPE * Math.sin(shoreAngle);
 
 /** Points the home view keeps in sight: the table's corners and the skyline's top. */
 export const HOME_POINTS: readonly Vector3[] = [

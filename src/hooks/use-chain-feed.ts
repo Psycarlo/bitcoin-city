@@ -1,10 +1,10 @@
 import { useEffect } from "react";
 
+import { createEsploraFeed } from "@/data/esplora";
 import {
   fetchHashrate,
   fetchRecentBlocks,
   MEMPOOL_PING,
-  MEMPOOL_SOCKET_URL,
   MEMPOOL_SUBSCRIBE,
   parseMempoolMessage,
   TRACK_NEXT_BLOCK,
@@ -22,6 +22,7 @@ import { blockKey, txKey } from "@/lib/scene-key";
 import { addActivity } from "@/stores/activity-store";
 import { sendCameraCommand } from "@/stores/camera-store";
 import { useChainStore } from "@/stores/chain-store";
+import { useSource } from "@/stores/source-store";
 import { useViewStore } from "@/stores/view-store";
 
 const SECOND = 1000;
@@ -71,70 +72,108 @@ const announceWhales = (update: MempoolUpdate) => {
   }
 };
 
+/** Takes in an update of either feed, and calls out what stands out in it. */
+const takeUpdate = (update: MempoolUpdate) => {
+  const { found, resync } = useChainStore.getState().actions.receive(update);
+  if (found) {
+    announceBlock(found);
+  }
+  announceWhales(update);
+  return resync;
+};
+
 /**
- * Keeps the chain store up to date with mempool.space: blocks as they are
- * found, the next block's transactions as they change, fees and mempool
- * statistics, and the network's hash rate.
+ * A mempool backend's live feed (`ws`, its websocket), with the hash rate
+ * from its REST API. Returns what closes it.
+ */
+const openMempoolFeed = (ws: string) => {
+  const { receive, setHashrate, setStatus } = useChainStore.getState().actions;
+  const controller = new AbortController();
+
+  // The live feed sends only the last few blocks on connecting.
+  const loadBlocks = async () => {
+    try {
+      const blocks = await fetchRecentBlocks(controller.signal);
+      if (!controller.signal.aborted) {
+        receive({ blocks });
+      }
+    } catch {
+      // The live feed's own blocks stand in until the next connection.
+    }
+  };
+
+  const loadHashrate = async () => {
+    try {
+      const hashrate = await fetchHashrate(controller.signal);
+      if (!controller.signal.aborted) {
+        setHashrate(hashrate);
+      }
+    } catch {
+      // Shown as unknown until the next try.
+    }
+  };
+  void loadHashrate();
+  const hashrateTimer = setInterval(() => {
+    void loadHashrate();
+  }, HASHRATE_REFRESH);
+
+  const feed = createSocketFeed(
+    {
+      parse: parseMempoolMessage,
+      ping: { data: MEMPOOL_PING, interval: PING_INTERVAL },
+      staleAfter: STALE_AFTER,
+      urls: [ws],
+    },
+    {
+      onMessage: (update) => {
+        if (takeUpdate(update)) {
+          feed.send(TRACK_NEXT_BLOCK);
+        }
+      },
+      onOpen: (send) => {
+        for (const message of MEMPOOL_SUBSCRIBE) {
+          send(message);
+        }
+        void loadBlocks();
+      },
+      onStatus: setStatus,
+    }
+  );
+
+  return () => {
+    controller.abort();
+    clearInterval(hashrateTimer);
+    feed.close();
+  };
+};
+
+/** A bare Esplora API (`api`, its REST base), polled; its feed estimates the hash rate. */
+const openEsploraFeed = (api: string) => {
+  const { setHashrate, setStatus } = useChainStore.getState().actions;
+  const feed = createEsploraFeed(api, {
+    onHashrate: setHashrate,
+    onMessage: (update) => {
+      takeUpdate(update);
+    },
+    onStatus: setStatus,
+  });
+  return () => {
+    feed.close();
+  };
+};
+
+/**
+ * Keeps the chain store up to date with the source in use: blocks as they
+ * are found, the next block's transactions as they change, fees and mempool
+ * statistics, and the network's hash rate. A change of source starts the
+ * chain over.
  */
 export const useChainFeed = () => {
+  const { api, kind, ws } = useSource();
   useEffect(() => {
-    const { receive, setHashrate, setStatus } =
-      useChainStore.getState().actions;
-    const controller = new AbortController();
-
-    // The live feed sends only the last few blocks on connecting.
-    const loadBlocks = async () => {
-      try {
-        receive({ blocks: await fetchRecentBlocks(controller.signal) });
-      } catch {
-        // The live feed's own blocks stand in until the next connection.
-      }
-    };
-
-    const loadHashrate = async () => {
-      try {
-        setHashrate(await fetchHashrate(controller.signal));
-      } catch {
-        // Shown as unknown until the next try.
-      }
-    };
-    void loadHashrate();
-    const hashrateTimer = setInterval(() => {
-      void loadHashrate();
-    }, HASHRATE_REFRESH);
-
-    const feed = createSocketFeed(
-      {
-        parse: parseMempoolMessage,
-        ping: { data: MEMPOOL_PING, interval: PING_INTERVAL },
-        staleAfter: STALE_AFTER,
-        urls: [MEMPOOL_SOCKET_URL],
-      },
-      {
-        onMessage: (update) => {
-          const { found, resync } = receive(update);
-          if (resync) {
-            feed.send(TRACK_NEXT_BLOCK);
-          }
-          if (found) {
-            announceBlock(found);
-          }
-          announceWhales(update);
-        },
-        onOpen: (send) => {
-          for (const message of MEMPOOL_SUBSCRIBE) {
-            send(message);
-          }
-          void loadBlocks();
-        },
-        onStatus: setStatus,
-      }
-    );
-
-    return () => {
-      controller.abort();
-      clearInterval(hashrateTimer);
-      feed.close();
-    };
-  }, []);
+    useChainStore.getState().actions.reset();
+    return kind === "mempool" && ws
+      ? openMempoolFeed(ws)
+      : openEsploraFeed(api);
+  }, [api, kind, ws]);
 };

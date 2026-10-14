@@ -33,7 +33,7 @@ const SceneMessage = ({
   title,
 }: SceneMessageProps) => (
   <div className="flex size-full items-center justify-center p-6">
-    <div className="pointer-events-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl bg-white/85 px-6 py-5 text-center shadow-sm ring-1 ring-slate-900/5 backdrop-blur-md">
+    <div className="bg-card/85 ring-foreground/5 pointer-events-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl px-6 py-5 text-center shadow-sm ring-1 backdrop-blur-md">
       <Icon
         className={
           spin ? "text-primary size-6 animate-spin" : "text-primary size-6"
@@ -84,8 +84,14 @@ const ReloadButton = () => (
   </Button>
 );
 
+interface SceneAreaProps {
+  insets: Insets;
+  /** Room a panel takes over the city, which what is picked is framed clear of. */
+  panel: Insets;
+}
+
 /** The 3D city, or what stands in for it while it loads or when it cannot be drawn. */
-export const SceneArea = ({ insets }: { insets: Insets }) => {
+export const SceneArea = ({ insets, panel }: SceneAreaProps) => {
   if (!WEBGL) {
     return (
       <InsetBox insets={insets}>
@@ -117,7 +123,7 @@ export const SceneArea = ({ insets }: { insets: Insets }) => {
           </InsetBox>
         }
       >
-        <WorldScene insets={insets} />
+        <WorldScene insets={insets} panel={panel} />
       </Suspense>
     </ErrorBoundary>
   );

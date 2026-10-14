@@ -8,7 +8,7 @@ const GRADIENT = feeGradient();
 export const FeeLegend = ({ className }: { className?: string }) => (
   <div
     className={cn(
-      "pointer-events-auto flex items-center gap-3 rounded-full bg-white/90 py-1.5 pr-4 pl-3.5 shadow-sm ring-1 shadow-slate-900/5 ring-slate-900/5 backdrop-blur-md",
+      "bg-card/90 ring-foreground/5 pointer-events-auto flex items-center gap-3 rounded-full py-1.5 pr-4 pl-3.5 shadow-sm ring-1 shadow-black/5 backdrop-blur-md",
       className
     )}
   >
@@ -17,7 +17,7 @@ export const FeeLegend = ({ className }: { className?: string }) => (
     </span>
     <div className="w-40">
       <div
-        className="h-2 rounded-full ring-1 ring-slate-900/5"
+        className="ring-foreground/5 h-2 rounded-full ring-1"
         style={{ background: GRADIENT }}
       />
       <div className="relative mt-0.5 h-3">

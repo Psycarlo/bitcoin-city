@@ -29,6 +29,7 @@ import { txKey } from "@/lib/scene-key";
 import type { Tone } from "@/lib/tone";
 import { useChainStore, useTip } from "@/stores/chain-store";
 import { usePrice } from "@/stores/price-store";
+import { getSource } from "@/stores/source-store";
 
 import {
   CloseAction,
@@ -49,7 +50,7 @@ import type { DetailRow, Stat } from "./detail-parts";
 
 type TxSelection = Extract<Selection, { kind: "tx" }>;
 
-/** Inputs and outputs listed; mempool.space has the rest. */
+/** Inputs and outputs listed; the explorer has the rest. */
 const LISTED = 5;
 /** Sequence numbers below this signal the sender may replace it (BIP 125). */
 const RBF_BELOW = 0xff_ff_ff_fe;
@@ -110,8 +111,7 @@ const statusOf = ({
   }
   if (missing) {
     return {
-      description:
-        "mempool.space has no record of it. It may have been replaced or dropped.",
+      description: `${getSource().label} has no record of it. It may have been replaced or dropped.`,
       label: "Not found",
       tone: "red",
     };
@@ -162,13 +162,13 @@ const Transfers = ({
     }
     title={title}
   >
-    <ul className="divide-y divide-slate-100 rounded-xl bg-slate-50 px-3 ring-1 ring-slate-100">
+    <ul className="divide-border/70 bg-muted/60 ring-border/60 divide-y rounded-xl px-3 ring-1">
       {items.slice(0, LISTED).map((item) => (
         <li
           className="flex items-baseline justify-between gap-3 py-1.5 text-xs"
           key={item.id}
         >
-          <span className="min-w-0 truncate font-mono text-[11px] text-slate-600">
+          <span className="text-muted-foreground min-w-0 truncate font-mono text-[11px]">
             {item.name}
           </span>
           <span className="shrink-0 font-medium tabular-nums">
@@ -184,7 +184,7 @@ const Transfers = ({
             rel="noreferrer"
             target="_blank"
           >
-            {formatNumber(items.length - LISTED)} more on mempool.space
+            {formatNumber(items.length - LISTED)} more on {getSource().label}
           </a>
         </li>
       ) : null}
@@ -384,7 +384,7 @@ export const TxDetailsView = ({ selection }: { selection: TxSelection }) => {
           actions={
             <>
               <FocusAction sceneKey={txKey(txid)} />
-              <LinkAction href={href} label="Open on mempool.space" />
+              <LinkAction href={href} label={`Open on ${getSource().label}`} />
               <CloseAction />
             </>
           }
@@ -413,7 +413,7 @@ export const TxDetailsView = ({ selection }: { selection: TxSelection }) => {
         {details ? <TxTransfers details={details} href={href} /> : null}
         {error !== undefined && known && !details ? (
           <Note Icon={CircleAlert}>
-            Could not load its inputs and outputs from mempool.space.
+            Could not load its inputs and outputs from {getSource().label}.
           </Note>
         ) : null}
         <Section title="Transaction ID">

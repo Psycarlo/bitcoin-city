@@ -132,7 +132,7 @@ export const ActivityMenu = () => {
       >
         <Bell className="size-[18px]" />
         {unseen > 0 ? (
-          <span className="absolute top-2 right-2.5 size-2 rounded-full bg-red-500 ring-2 ring-white" />
+          <span className="ring-card absolute top-2 right-2.5 size-2 rounded-full bg-red-500 ring-2" />
         ) : null}
       </PopoverTrigger>
       <PopoverContent

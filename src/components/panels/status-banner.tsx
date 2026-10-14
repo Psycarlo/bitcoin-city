@@ -4,6 +4,7 @@ import type { FeedStatus } from "@/data/types";
 import { cn } from "@/lib/utils";
 import { useChainStore } from "@/stores/chain-store";
 import { usePriceStore } from "@/stores/price-store";
+import { useSource } from "@/stores/source-store";
 
 interface Feed {
   /** Something arrived already: a reconnect then keeps showing it. */
@@ -29,8 +30,9 @@ export const StatusBanner = ({ className }: { className?: string }) => {
   const chainLoaded = useChainStore((state) => state.blocks.length > 0);
   const priceStatus = usePriceStore((state) => state.status);
   const priceLoaded = usePriceStore((state) => state.last !== undefined);
+  const { label } = useSource();
   const feeds: Feed[] = [
-    { loaded: chainLoaded, name: "mempool.space", status: chainStatus },
+    { loaded: chainLoaded, name: label, status: chainStatus },
     { loaded: priceLoaded, name: "Binance", status: priceStatus },
   ];
 
@@ -53,8 +55,8 @@ export const StatusBanner = ({ className }: { className?: string }) => {
       className={cn(
         "pointer-events-auto flex w-fit items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium shadow-sm ring-1 backdrop-blur-md",
         warning
-          ? "bg-amber-50/95 text-amber-800 ring-amber-600/20"
-          : "bg-white/95 text-slate-600 ring-slate-900/5",
+          ? "bg-amber-50/95 text-amber-800 ring-amber-600/20 dark:bg-amber-950/90 dark:text-amber-200 dark:ring-amber-400/25"
+          : "bg-card/95 text-muted-foreground ring-foreground/5",
         className
       )}
     >

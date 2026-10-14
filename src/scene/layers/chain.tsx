@@ -1,6 +1,14 @@
 import { useFrame } from "@react-three/fiber";
-import { memo, useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import { MeshBasicMaterial, MeshLambertMaterial } from "three";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { MeshBasicMaterial } from "three";
 import type { Group } from "three";
 
 import type { Block, TxSummary } from "@/data/types";
@@ -22,12 +30,14 @@ import {
   pathPoint,
   PLOT,
 } from "../layout";
-import { PALETTE } from "../palette";
+import { paint } from "../paint";
 import { registerLocator } from "../positions";
 import { invalidateShadows } from "../shadows";
-import { useDisposable } from "../use-disposable";
+import { Departures } from "./departure";
+import type { Departure } from "./departure";
 import { LabelNote, PlotLabel, PlotPad } from "./plot";
 import { plotBox, useHighlight, usePlotHandlers } from "./plot-state";
+import { Vault, VAULT_HEIGHT_RANGE, VAULT_MIN_HEIGHT } from "./vault";
 
 /** A block found this recently (ms) glides in from the next block's plot. */
 const ARRIVAL_WINDOW = 15_000;
@@ -40,15 +50,6 @@ const MAX_STEP = 0.1;
 /** Height of a city's label above the plot (clears all but the miner's tower). */
 const CITY_LABEL_HEIGHT = 70;
 
-/** A sealed block: a strongbox, as tall as the block is full. */
-const VAULT_WIDTH = 260;
-const VAULT_RADIUS = 20;
-const VAULT_MIN_HEIGHT = 30;
-const VAULT_HEIGHT_RANGE = 60;
-/** Weight of a full block (weight units). */
-const MAX_WEIGHT = 4_000_000;
-const VAULT_SIDE = new MeshLambertMaterial({ color: PALETTE.vaultSide });
-
 /** The next block's halo, breathing while it is mined. */
 const HALO_WIDTH = 24;
 const HALO = roundedSlab(
@@ -57,12 +58,10 @@ const HALO = roundedSlab(
   28 + HALO_WIDTH,
   1
 );
-const HALO_MATERIAL = new MeshBasicMaterial({
-  color: PALETTE.selection,
-  depthWrite: false,
-  opacity: 0.3,
-  transparent: true,
-});
+const HALO_MATERIAL = paint(
+  new MeshBasicMaterial({ depthWrite: false, opacity: 0.3, transparent: true }),
+  "selection"
+);
 const HALO_PULSE = 2.4;
 const HALO_OPACITY = { max: 0.55, min: 0.12 } as const;
 
@@ -76,40 +75,6 @@ const useBlockTxs = (hash: string) => {
   const summary = useSummary(hash);
   const provisional = useChainStore((state) => state.provisional[hash]);
   return summary ?? provisional ?? NO_TXS;
-};
-
-interface VaultProps {
-  medianFee: number;
-  weight: number;
-}
-
-/** A block shown sealed: its fill as height, its median fee rate as colour. */
-const Vault = ({ medianFee, weight }: VaultProps) => {
-  const height = Math.round(
-    VAULT_MIN_HEIGHT + VAULT_HEIGHT_RANGE * Math.min(1, weight / MAX_WEIGHT)
-  );
-  const geometry = useMemo(
-    () => roundedSlab(VAULT_WIDTH, VAULT_WIDTH, VAULT_RADIUS, height),
-    [height]
-  );
-  const top = useMemo(
-    () => new MeshLambertMaterial({ color: feeColour(medianFee) }),
-    [medianFee]
-  );
-  const materials = useMemo(() => [top, VAULT_SIDE], [top]);
-  useDisposable(geometry);
-  useDisposable(top);
-  // The slab hangs below its top, bevels included.
-  const bevel = Math.min(VAULT_RADIUS / 4, height / 3);
-  return (
-    <mesh
-      castShadow
-      geometry={geometry}
-      material={materials}
-      position-y={height + bevel * 2}
-      receiveShadow
-    />
-  );
 };
 
 interface BlockPlotProps {
@@ -280,9 +245,53 @@ const NextBlockPlot = () => {
   );
 };
 
-/** The confirmed blocks, newest first along the path, and the next block. */
+/** Blocks leaving at once, at most (more only follow a reorganisation). */
+const MAX_DEPARTURES = 3;
+
+/**
+ * Blocks pushed off the end of the chain by newer ones, on their way out.
+ * Only those older than every block still on show leave this way: a
+ * block replaced in a reorganisation, or a reset, just goes.
+ */
+const useDepartures = (shown: readonly Block[]) => {
+  const [departures, setDepartures] = useState<readonly Departure[]>([]);
+  const previousRef = useRef(shown);
+
+  useLayoutEffect(() => {
+    const previous = previousRef.current;
+    previousRef.current = shown;
+    const oldest = shown.at(-1)?.height;
+    if (oldest === undefined || previous.length < CONFIRMED_SHOWN) {
+      return;
+    }
+    const kept = new Set(shown.map((block) => block.id));
+    const gone = previous
+      .map((block, index) => ({ block, index }))
+      .filter(({ block }) => !kept.has(block.id) && block.height < oldest)
+      .slice(-MAX_DEPARTURES)
+      .map((departure, order, all) => ({
+        ...departure,
+        order: all.length - 1 - order,
+      }));
+    if (gone.length > 0) {
+      setDepartures((current) => [...current, ...gone]);
+    }
+  }, [shown]);
+
+  const handleGone = useCallback((id: string) => {
+    setDepartures((current) =>
+      current.filter((departure) => departure.block.id !== id)
+    );
+  }, []);
+
+  return [departures, handleGone] as const;
+};
+
+/** The confirmed blocks, newest first along the path, the next block, and those leaving. */
 export const ChainLayer = () => {
   const blocks = useChainStore((state) => state.blocks);
+  const shown = useMemo(() => blocks.slice(0, CONFIRMED_SHOWN), [blocks]);
+  const [departures, handleGone] = useDepartures(shown);
 
   // The cities on show load their transactions, newest first.
   useEffect(() => {
@@ -293,10 +302,11 @@ export const ChainLayer = () => {
 
   return (
     <>
-      {blocks.slice(0, CONFIRMED_SHOWN).map((block, index) => (
+      {shown.map((block, index) => (
         <BlockPlot block={block} index={index} key={block.id} />
       ))}
       <NextBlockPlot />
+      <Departures departures={departures} onGone={handleGone} />
     </>
   );
 };

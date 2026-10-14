@@ -101,6 +101,8 @@ Everything comes live from public APIs, straight from the browser:
 - [mempool.space](https://mempool.space/) — blocks, transactions, mempool and fee estimates (REST + WebSocket)
 - [Binance](https://www.binance.com/) — BTC/USDT price and candles (REST + WebSocket)
 
+The chain's source can be changed in the app (settings → Data source) to your own [mempool](https://github.com/mempool/mempool) instance, or to any [Esplora](https://github.com/Blockstream/esplora) API, e.g. `https://mempool.second.tech/api`. The API has to allow cross-origin requests. An Esplora API has no live feed or block summaries, so it is polled and knows less: no mining pools, and only blocks found while the page is open get a full city.
+
 ## Tech stack
 
 **App**

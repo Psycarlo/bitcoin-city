@@ -2,6 +2,7 @@ import {
   ChartCandlestick,
   House,
   Radar,
+  Server,
   SlidersHorizontal,
   Tags,
   Trees,
@@ -20,6 +21,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { sendCameraCommand } from "@/stores/camera-store";
+import { openSourceDialog } from "@/stores/dialog-store";
+import { useSource } from "@/stores/source-store";
 import { useViewActions, useViewStore } from "@/stores/view-store";
 import type { SceneToggles } from "@/stores/view-store";
 
@@ -56,7 +59,18 @@ const ToggleItem = ({ Icon, label, layer }: Toggle) => {
   );
 };
 
-/** What the city shows, and how the camera behaves. */
+const SourceItem = () => {
+  const { label } = useSource();
+  return (
+    <DropdownMenuItem onClick={openSourceDialog}>
+      <Server />
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <span className="text-muted-foreground text-xs">Change…</span>
+    </DropdownMenuItem>
+  );
+};
+
+/** What the city shows, how the camera behaves, and where the data comes from. */
 export const SettingsMenu = () => (
   <DropdownMenu>
     <DropdownMenuTrigger
@@ -90,6 +104,11 @@ export const SettingsMenu = () => (
           <House />
           Reset view
         </DropdownMenuItem>
+      </DropdownMenuGroup>
+      <DropdownMenuSeparator />
+      <DropdownMenuGroup>
+        <DropdownMenuLabel>Data source</DropdownMenuLabel>
+        <SourceItem />
       </DropdownMenuGroup>
     </DropdownMenuContent>
   </DropdownMenu>

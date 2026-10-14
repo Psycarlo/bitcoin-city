@@ -44,6 +44,12 @@ const SMOOTH_TIME = 0.3;
 const GLIDE_RATE = 8;
 /** Closer than this (px), the centre snaps to where it is going. */
 const GLIDE_SNAP = 0.5;
+/** Already home, going home again gives a little nod (a share of the zoom)… */
+const NOD = 0.06;
+/** …that bounces back after this long (ms). */
+const NOD_MS = 170;
+/** Within these of the home view, it counts as there. */
+const HOME_TOLERANCE = { angle: 0.5 * DEG, distance: 2, zoom: 0.01 } as const;
 
 const MOUSE_BUTTONS = {
   left: ACTION.TRUCK,
@@ -234,6 +240,11 @@ interface CameraRigProps {
    */
   frame: HTMLElement | null;
   insets: Insets;
+  /**
+   * Room a panel takes over the picture without moving it (the details):
+   * what is brought into view is framed in what it leaves.
+   */
+  panel: Insets;
 }
 
 /**
@@ -242,16 +253,19 @@ interface CameraRigProps {
  * commands: a block is framed whole, a transaction brought close. One not on
  * show yet (its block's city is still loading) is looked for a little while.
  */
-export const CameraRig = ({ frame, insets }: CameraRigProps) => {
+export const CameraRig = ({ frame, insets, panel }: CameraRigProps) => {
   const controlsRef = useRef<CameraControlsImpl>(null);
   // Read when going home, which must not happen each time the panels move.
   const insetsRef = useRef(insets);
+  const panelRef = useRef(panel);
+  const nodRef = useRef<ReturnType<typeof setTimeout>>(null);
   const pendingRef = useRef<Pending | null>(null);
   const getState = useThree((state) => state.get);
 
   useLayoutEffect(() => {
     insetsRef.current = insets;
-  }, [insets]);
+    panelRef.current = panel;
+  }, [insets, panel]);
 
   const goHome = useCallback(
     (controls: CameraControlsImpl, animate: boolean) => {
@@ -262,6 +276,24 @@ export const CameraRig = ({ frame, insets }: CameraRigProps) => {
       );
       controls.setBoundary(CAMERA_BOUNDS);
       controls.minZoom = zoom * MIN_ZOOM_SHARE;
+      const there = controls.getTarget(new Vector3());
+      const home =
+        there.distanceTo(target) < HOME_TOLERANCE.distance &&
+        Math.abs(controls.camera.zoom / zoom - 1) < HOME_TOLERANCE.zoom &&
+        Math.abs(controls.polarAngle - HOME.polar) < HOME_TOLERANCE.angle &&
+        Math.abs(
+          controls.azimuthAngle -
+            nearestTurn(controls.azimuthAngle, HOME.azimuth)
+        ) < HOME_TOLERANCE.angle;
+      if (animate && home) {
+        // Nothing to move: a nod says it heard.
+        void controls.zoomTo(zoom * (1 - NOD), true);
+        clearTimeout(nodRef.current ?? undefined);
+        nodRef.current = setTimeout(() => {
+          void controls.zoomTo(zoom, true);
+        }, NOD_MS);
+        return;
+      }
       void controls.rotateTo(
         nearestTurn(controls.azimuthAngle, HOME.azimuth),
         HOME.polar,
@@ -280,18 +312,40 @@ export const CameraRig = ({ frame, insets }: CameraRigProps) => {
       if (!locate(key, box)) {
         return false;
       }
+      const azimuth = controls.azimuthAngle;
+      const insetsNow = insetsRef.current;
+      const extra = panelRef.current;
       const framed = frameView(
         cornersOf(box),
-        { azimuth: controls.azimuthAngle, polar: controls.polarAngle },
-        roomOf(getState().size, insetsRef.current, FOCUS_MARGIN)
+        { azimuth, polar: controls.polarAngle },
+        roomOf(
+          getState().size,
+          {
+            bottom: insetsNow.bottom + extra.bottom,
+            left: insetsNow.left + extra.left,
+            right: insetsNow.right + extra.right,
+            top: insetsNow.top + extra.top,
+          },
+          FOCUS_MARGIN
+        )
       );
-      const zoom =
+      const zoom = Math.min(
         parseKey(key).kind === "tx"
           ? Math.min(framed.zoom, Math.max(controls.camera.zoom, TX_ZOOM))
-          : framed.zoom;
-      const { target } = framed;
+          : framed.zoom,
+        MAX_ZOOM
+      );
+      // The picture stays centred where it is: the camera looks aside so the
+      // subject lands in the middle of what the panel leaves.
+      const aside = (extra.right - extra.left) / 2 / zoom;
+      const target = framed.target
+        .clone()
+        .addScaledVector(
+          new Vector3(Math.cos(azimuth), 0, -Math.sin(azimuth)),
+          aside
+        );
       void controls.moveTo(target.x, target.y, target.z, true);
-      void controls.zoomTo(Math.min(zoom, MAX_ZOOM), true);
+      void controls.zoomTo(zoom, true);
       return true;
     },
     [getState]
@@ -388,7 +442,15 @@ export const CameraRig = ({ frame, insets }: CameraRigProps) => {
   // The user took over: whatever was awaited is not wanted any more.
   const handleControlStart = useCallback(() => {
     pendingRef.current = null;
+    clearTimeout(nodRef.current ?? undefined);
   }, []);
+
+  useEffect(
+    () => () => {
+      clearTimeout(nodRef.current ?? undefined);
+    },
+    []
+  );
 
   const handleRest = useCallback(() => {
     if (controlsRef.current) {

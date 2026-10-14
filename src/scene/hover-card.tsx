@@ -33,8 +33,8 @@ const usdOf = (sats: number, price: number | undefined) =>
 
 const Row = ({ label, value }: { label: string; value: string }) => (
   <div className="flex items-baseline justify-between gap-4">
-    <dt className="text-slate-500">{label}</dt>
-    <dd className="font-medium text-slate-800 tabular-nums">{value}</dd>
+    <dt className="text-muted-foreground">{label}</dt>
+    <dd className="text-foreground font-medium tabular-nums">{value}</dd>
   </div>
 );
 
@@ -46,10 +46,10 @@ const CardBody = ({ tx }: { tx: TxSummary }) => {
   const usd = usePrice();
   const colour = tx.coinbase ? COINBASE_COLOUR : feeColour(tx.rate);
   return (
-    <div className="w-52 -translate-x-1/2 -translate-y-[calc(100%+14px)] rounded-xl bg-white/95 p-2.5 text-[11px] shadow-lg ring-1 shadow-slate-900/10 ring-slate-900/10 backdrop-blur-md">
-      <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-900">
+    <div className="bg-card/95 ring-foreground/10 w-52 -translate-x-1/2 -translate-y-[calc(100%+14px)] rounded-xl p-2.5 text-[11px] shadow-lg ring-1 shadow-black/10 backdrop-blur-md">
+      <p className="text-foreground flex items-center gap-1.5 text-xs font-semibold">
         <span
-          className="size-2.5 shrink-0 rounded-full ring-2 ring-white"
+          className="ring-card size-2.5 shrink-0 rounded-full ring-2"
           style={{ backgroundColor: colour }}
         />
         {tx.coinbase ? "Coinbase · miner's reward" : formatFeeRate(tx.rate)}
@@ -67,7 +67,7 @@ const CardBody = ({ tx }: { tx: TxSummary }) => {
           value={withUsd(formatAmount(tx.value), usdOf(tx.value, usd))}
         />
       </dl>
-      <p className="mt-1.5 font-mono text-[10px] text-slate-400">
+      <p className="text-muted-foreground/70 mt-1.5 font-mono text-[10px]">
         {shortId(tx.txid, 8, 8)}
       </p>
     </div>

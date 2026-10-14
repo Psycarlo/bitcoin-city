@@ -19,6 +19,7 @@ import type { Tone } from "@/lib/tone";
 import { PROJECTED_SHOWN } from "@/scene/slots";
 import { useChainStore, useLastBlockTime, useTip } from "@/stores/chain-store";
 import { usePrice } from "@/stores/price-store";
+import { getSource } from "@/stores/source-store";
 
 import {
   CloseAction,
@@ -164,8 +165,7 @@ const copyOf = (index: number, height?: number): Copy => {
     height === undefined ? undefined : formatHeight(height + offset);
   if (index === 0) {
     return {
-      description:
-        "What miners are most likely working on: the mempool's best-paying transactions, as mempool.space sees it.",
+      description: `What miners are most likely working on: the mempool's best-paying transactions, as ${getSource().label} sees it.`,
       eyebrow: "Mining now",
       label: "Next block",
       title: at(1) ?? "Next block",

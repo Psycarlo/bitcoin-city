@@ -10,7 +10,7 @@ import { COVERED_CLASSES, declutterRef } from "../declutter";
 import { roundedSlab } from "../geometry";
 import { SceneHtml } from "../html-layer";
 import { PAD_TOP, PLOT } from "../layout";
-import { PALETTE } from "../palette";
+import { paint } from "../paint";
 import { CLICK_TOLERANCE } from "./plot-state";
 import type { Highlight } from "./plot-state";
 
@@ -26,14 +26,14 @@ const RIM = roundedSlab(
   PAD_RADIUS + RIM_WIDTH,
   PAD_TOP / 2
 );
-const PAD_SIDE = new MeshLambertMaterial({ color: PALETTE.padSide });
+const PAD_SIDE = paint(new MeshLambertMaterial(), "padSide");
 const PAD_MATERIALS = {
-  next: [new MeshLambertMaterial({ color: PALETTE.padNext }), PAD_SIDE],
-  plain: [new MeshLambertMaterial({ color: PALETTE.pad }), PAD_SIDE],
+  next: [paint(new MeshLambertMaterial(), "padNext"), PAD_SIDE],
+  plain: [paint(new MeshLambertMaterial(), "pad"), PAD_SIDE],
 };
 const RIM_MATERIALS = {
-  hovered: new MeshLambertMaterial({ color: PALETTE.hover }),
-  selected: new MeshLambertMaterial({ color: PALETTE.selection }),
+  hovered: paint(new MeshLambertMaterial(), "hover"),
+  selected: paint(new MeshLambertMaterial(), "selection"),
 };
 
 interface PlotPadProps {
@@ -118,7 +118,7 @@ export const PlotLabel = ({
           COVERED_CLASSES,
           selected
             ? "bg-primary text-primary-foreground ring-primary"
-            : "bg-white/95 text-slate-800 ring-slate-900/10 hover:bg-white"
+            : "bg-card/95 text-foreground ring-foreground/10 hover:bg-card"
         )}
         data-priority={highlight ? PRIORITY[highlight] : priority}
         onClick={handleClick}
@@ -130,7 +130,7 @@ export const PlotLabel = ({
       >
         {colour ? (
           <span
-            className="size-2 rounded-full ring-2 ring-white/70"
+            className="ring-card/70 size-2 rounded-full ring-2"
             style={{ backgroundColor: colour }}
           />
         ) : null}
@@ -151,7 +151,7 @@ export const LabelNote = ({
   <span
     className={cn(
       "font-medium",
-      selected ? "text-primary-foreground/80" : "text-slate-500"
+      selected ? "text-primary-foreground/80" : "text-muted-foreground"
     )}
   >
     {children}

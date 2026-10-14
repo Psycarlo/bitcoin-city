@@ -21,7 +21,8 @@ import { COVERED_CLASSES, declutterRef } from "../declutter";
 import { roundedSlab } from "../geometry";
 import { SceneHtml } from "../html-layer";
 import { PAD_TOP, TERRACE } from "../layout";
-import { PALETTE } from "../palette";
+import { paint, track } from "../paint";
+import { usePalette } from "../palette";
 
 /**
  * The price, as a skyline behind the chain: one tower per candle, newest on
@@ -56,15 +57,15 @@ const PAIR_PRIORITY = 10;
 
 const TERRACE_SLAB = roundedSlab(TERRACE.width, TERRACE.depth, 48, PAD_TOP);
 const TERRACE_MATERIALS = [
-  new MeshLambertMaterial({ color: PALETTE.terrace }),
-  new MeshLambertMaterial({ color: PALETTE.padSide }),
+  paint(new MeshLambertMaterial(), "terrace"),
+  paint(new MeshLambertMaterial(), "padSide"),
 ];
 
 const UNIT = new BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
-const STEM_MATERIAL = new MeshLambertMaterial({ color: PALETTE.candleStem });
+const STEM_MATERIAL = paint(new MeshLambertMaterial(), "candleStem");
 const CROWN_MATERIAL = new MeshLambertMaterial();
-const UP = new Color(PALETTE.candleUp);
-const DOWN = new Color(PALETTE.candleDown);
+const UP = track(new Color(), "candleUp");
+const DOWN = track(new Color(), "candleDown");
 
 const matrix = new Matrix4();
 const where = new Vector3();
@@ -114,7 +115,7 @@ const PriceTag = () => {
   return (
     <div
       className={cn(
-        "flex -translate-y-1/2 items-center gap-1.5 rounded-full bg-white/95 py-0.5 pr-2 pl-1.5 text-[11px] font-semibold whitespace-nowrap text-slate-800 tabular-nums shadow-md ring-1 ring-slate-900/10 transition-opacity duration-200",
+        "bg-card/95 text-foreground ring-foreground/10 flex -translate-y-1/2 items-center gap-1.5 rounded-full py-0.5 pr-2 pl-1.5 text-[11px] font-semibold whitespace-nowrap tabular-nums shadow-md ring-1 transition-opacity duration-200",
         COVERED_CLASSES
       )}
       data-priority={PRICE_PRIORITY}
@@ -122,7 +123,7 @@ const PriceTag = () => {
     >
       <span
         className={cn(
-          "size-2 rounded-full ring-2 ring-white/70",
+          "ring-card/70 size-2 rounded-full ring-2",
           trend < 0 ? "bg-rose-500" : "bg-emerald-500"
         )}
       />
@@ -136,7 +137,7 @@ const PairSign = () => {
   return (
     <div
       className={cn(
-        "-translate-x-full -translate-y-1/2 rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-semibold tracking-wide whitespace-nowrap text-slate-500 shadow-sm ring-1 ring-slate-900/5 transition-opacity duration-200",
+        "bg-card/80 text-muted-foreground ring-foreground/5 -translate-x-full -translate-y-1/2 rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide whitespace-nowrap shadow-sm ring-1 transition-opacity duration-200",
         COVERED_CLASSES
       )}
       data-priority={PAIR_PRIORITY}
@@ -161,6 +162,7 @@ export const Skyline = () => {
     stale: true,
   });
   const interval = useViewStore((state) => state.interval);
+  const palette = usePalette();
   const linePoints = useMemo(
     () => [new Vector3(WEST - PITCH / 2, 0, 0), new Vector3(EAST + 12, 0, 0)],
     []
@@ -276,7 +278,7 @@ export const Skyline = () => {
       />
       <group position-z={TOWER} ref={lineRef} visible={false}>
         <Line
-          color={PALETTE.selection}
+          color={palette.selection}
           dashed
           dashSize={LINE_DASH.size}
           gapSize={LINE_DASH.gap}

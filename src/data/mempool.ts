@@ -1,3 +1,11 @@
+/**
+ * The chain's REST API and live feed as a mempool backend (mempool.space or
+ * one of its kind) serves them, from the source in use, read at call time so
+ * a change of source applies to the next call. A bare Esplora API serves a
+ * subset: what it lacks falls back to its own endpoints, or fails.
+ */
+import { getSource } from "@/stores/source-store";
+
 import { getJson, getText } from "./http";
 import {
   isDefined,
@@ -25,15 +33,13 @@ import type {
   TxSummary,
 } from "./types";
 
-/** mempool.space: an open Bitcoin explorer with a public API and live updates. */
-const ORIGIN = "https://mempool.space";
-const API = `${ORIGIN}/api`;
 const SECOND = 1000;
+/** Blocks fetched up front, enough for every plot on show. */
+const RECENT_BLOCKS = 15;
 /** Bitcoin Core reports amounts in BTC (and fee floors in BTC per kvB). */
 const SATS_PER_BTC = 100_000_000;
 const SAT_PER_VB_IN_BTC_PER_KVB = SATS_PER_BTC / 1000;
 
-export const MEMPOOL_SOCKET_URL = "wss://mempool.space/api/v1/ws";
 export const MEMPOOL_PING = JSON.stringify({ action: "ping" });
 /** Asks for the next block's transactions: all of them, then what changes. */
 export const TRACK_NEXT_BLOCK = JSON.stringify({ "track-mempool-block": 0 });
@@ -47,14 +53,23 @@ export const MEMPOOL_SUBSCRIBE = [
   TRACK_NEXT_BLOCK,
 ] as const;
 
+/** Thrown for what the source in use cannot serve (a bare Esplora API knows less). */
+export class UnsupportedError extends Error {
+  constructor(what: string) {
+    super(`${what} is not available from ${getSource().label}`);
+    this.name = "UnsupportedError";
+  }
+}
+
+/** Pages of the source's explorer (Esplora and mempool frontends share these paths). */
 export const mempoolLinks = {
-  block: (hash: string) => `${ORIGIN}/block/${hash}`,
-  tx: (txid: string) => `${ORIGIN}/tx/${txid}`,
+  block: (hash: string) => `${getSource().web}/block/${hash}`,
+  tx: (txid: string) => `${getSource().web}/tx/${txid}`,
 };
 
-/** Logo of a mining pool, by its slug. */
+/** Logo of a mining pool, by its slug, from the explorer's site root. */
 export const poolLogoUrl = (slug: string) =>
-  `${ORIGIN}/resources/mining-pools/${slug}.svg`;
+  `${new URL(getSource().web).origin}/resources/mining-pools/${slug}.svg`;
 
 const recordOf = (value: unknown): JsonRecord => (isRecord(value) ? value : {});
 
@@ -259,14 +274,42 @@ export const parseMempoolMessage = (
   return Object.keys(update).length > 0 ? update : undefined;
 };
 
+/** Blocks as a list, newest first. */
+export const parseBlockList = (raw: unknown): Block[] =>
+  Array.isArray(raw)
+    ? raw
+        .map(parseBlock)
+        .filter(isDefined)
+        .toSorted((a, b) => b.height - a.height)
+    : [];
+
+/** Esplora's latest blocks, ten to a page: the tip's page, then the one below. */
+export const fetchEsploraBlocks = async (api: string, signal?: AbortSignal) => {
+  const latest = parseBlockList(await getJson(`${api}/blocks`, signal));
+  const last = latest.at(-1);
+  if (!last || last.height === 0 || latest.length >= RECENT_BLOCKS) {
+    return latest.slice(0, RECENT_BLOCKS);
+  }
+  const older = parseBlockList(
+    await getJson(`${api}/blocks/${last.height - 1}`, signal)
+  );
+  return [...latest, ...older].slice(0, RECENT_BLOCKS);
+};
+
 /** The 15 latest blocks, newest first. */
 export const fetchRecentBlocks = async (signal?: AbortSignal) => {
-  const raw = await getJson(`${API}/v1/blocks`, signal);
-  return Array.isArray(raw) ? raw.map(parseBlock).filter(isDefined) : [];
+  const { api, kind } = getSource();
+  if (kind === "esplora") {
+    return fetchEsploraBlocks(api, signal);
+  }
+  return parseBlockList(await getJson(`${api}/v1/blocks`, signal));
 };
 
 export const fetchBlock = async (hash: string, signal?: AbortSignal) => {
-  const block = parseBlock(await getJson(`${API}/v1/block/${hash}`, signal));
+  const { api, kind } = getSource();
+  // Esplora's block lacks mempool's extras (pool, fees), which parseBlock can do without.
+  const path = kind === "esplora" ? "block" : "v1/block";
+  const block = parseBlock(await getJson(`${api}/${path}/${hash}`, signal));
   if (!block) {
     throw new Error(`Block ${hash} could not be read`);
   }
@@ -277,7 +320,10 @@ const BLOCK_HASH = /^[\da-f]{64}$/iu;
 
 /** The hash of the block at a height on the main chain. */
 export const fetchBlockHash = async (height: number, signal?: AbortSignal) => {
-  const text = await getText(`${API}/block-height/${height}`, signal);
+  const text = await getText(
+    `${getSource().api}/block-height/${height}`,
+    signal
+  );
   const hash = text.trim();
   if (!BLOCK_HASH.test(hash)) {
     throw new Error(`No block at height ${height}`);
@@ -285,12 +331,20 @@ export const fetchBlockHash = async (height: number, signal?: AbortSignal) => {
   return hash.toLowerCase();
 };
 
-/** Every transaction in a block, the coinbase first. */
+/**
+ * Every transaction in a block, the coinbase first. A bare Esplora API has
+ * no such list (paging through a block 25 transactions at a time is too
+ * heavy), so it fails at once, without a request.
+ */
 export const fetchBlockSummary = async (
   hash: string,
   signal?: AbortSignal
 ): Promise<readonly TxSummary[]> => {
-  const raw = await getJson(`${API}/v1/block/${hash}/summary`, signal);
+  const { api, kind } = getSource();
+  if (kind === "esplora") {
+    throw new UnsupportedError("A block's transactions");
+  }
+  const raw = await getJson(`${api}/v1/block/${hash}/summary`, signal);
   return parseTxList(raw).map((tx, index) =>
     index === 0 ? { ...tx, coinbase: true } : tx
   );
@@ -320,7 +374,7 @@ export const fetchTx = async (
   txid: string,
   signal?: AbortSignal
 ): Promise<TxDetails> => {
-  const raw = recordOf(await getJson(`${API}/tx/${txid}`, signal));
+  const raw = recordOf(await getJson(`${getSource().api}/tx/${txid}`, signal));
   const status = recordOf(raw.status);
   return {
     fee: numberOf(raw.fee),
@@ -340,11 +394,18 @@ export const fetchTx = async (
   };
 };
 
-/** The network's hash rate and difficulty, from the last three days. */
+/**
+ * The network's hash rate and difficulty, from the last three days. A bare
+ * Esplora API has no mining statistics: its live feed estimates them instead.
+ */
 export const fetchHashrate = async (
   signal?: AbortSignal
 ): Promise<Hashrate> => {
-  const raw = recordOf(await getJson(`${API}/v1/mining/hashrate/3d`, signal));
+  const { api, kind } = getSource();
+  if (kind === "esplora") {
+    throw new UnsupportedError("The hash rate");
+  }
+  const raw = recordOf(await getJson(`${api}/v1/mining/hashrate/3d`, signal));
   return {
     current: numberOf(raw.currentHashrate),
     difficulty: numberOf(raw.currentDifficulty),

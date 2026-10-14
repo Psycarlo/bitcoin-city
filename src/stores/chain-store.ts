@@ -186,6 +186,7 @@ export const receiveUpdate = (
 
 interface ChainActions {
   receive: (update: MempoolUpdate) => ReceiveResult;
+  /** Forgets everything, as when the source changes. */
   reset: () => void;
   setHashrate: (hashrate: Hashrate) => void;
   setStatus: (status: FeedStatus) => void;
@@ -203,8 +204,10 @@ export const useChainStore = create<ChainStore>()((set, get) => ({
       set(state);
       return result;
     },
+    // Replaces the whole state, so what only the last source sent (fees,
+    // hash rate…) goes too.
     reset: () => {
-      set(INITIAL_CHAIN);
+      set({ ...INITIAL_CHAIN, actions: get().actions }, true);
     },
     setHashrate: (hashrate) => {
       set({ hashrate });

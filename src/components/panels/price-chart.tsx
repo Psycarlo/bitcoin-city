@@ -13,11 +13,11 @@ import {
   formatUsdWhole,
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { PALETTE } from "@/scene/palette";
+import { usePalette } from "@/scene/palette";
 import { usePrice, usePriceStore } from "@/stores/price-store";
 import { useViewActions, useViewStore } from "@/stores/view-store";
 
-import { Panel, PanelEyebrow } from "./panel";
+import { PanelEyebrow } from "./panel";
 
 /** Chart height (px), the volume bars' share of it, and room above and below the prices. */
 const HEIGHT = 132;
@@ -30,8 +30,6 @@ const SHOWN = 80;
 const BODY_SHARE = 0.64;
 const RANGE_PAD = 0.04;
 const TICKS = 4;
-const UP = PALETTE.candleUp;
-const DOWN = PALETTE.candleDown;
 
 const isInterval = (value: unknown): value is CandleInterval =>
   CANDLE_INTERVALS.includes(value as CandleInterval);
@@ -107,6 +105,8 @@ const Chart = ({ candles, hovered, onHover, price, width }: ChartProps) => {
   const last = price ?? shown.at(-1)?.close;
   const focus = hovered === undefined ? undefined : shown[hovered];
 
+  const palette = usePalette();
+
   const handleMove = (event: PointerEvent<SVGSVGElement>) => {
     const box = event.currentTarget.getBoundingClientRect();
     const index = Math.floor((event.clientX - box.left - offset) / pitch);
@@ -129,7 +129,7 @@ const Chart = ({ candles, hovered, onHover, price, width }: ChartProps) => {
       {ticks.map((tick) => (
         <g key={tick}>
           <line
-            stroke="#e2e8f0"
+            className="stroke-border"
             strokeDasharray="2 4"
             x1={0}
             x2={plot}
@@ -137,7 +137,7 @@ const Chart = ({ candles, hovered, onHover, price, width }: ChartProps) => {
             y2={yOf(tick)}
           />
           <text
-            className="fill-slate-400 text-[10px] tabular-nums"
+            className="fill-muted-foreground/80 text-[10px] tabular-nums"
             dominantBaseline="middle"
             x={plot + 6}
             y={yOf(tick)}
@@ -148,7 +148,7 @@ const Chart = ({ candles, hovered, onHover, price, width }: ChartProps) => {
       ))}
       {focus ? (
         <rect
-          fill="#f1f5f9"
+          className="fill-muted"
           height={HEIGHT}
           width={pitch}
           x={xOf(hovered ?? 0) - pitch / 2}
@@ -156,7 +156,8 @@ const Chart = ({ candles, hovered, onHover, price, width }: ChartProps) => {
         />
       ) : null}
       {shown.map((candle, index) => {
-        const colour = candle.close >= candle.open ? UP : DOWN;
+        const colour =
+          candle.close >= candle.open ? palette.candleUp : palette.candleDown;
         const x = xOf(index);
         const top = yOf(Math.max(candle.open, candle.close));
         const bottom = yOf(Math.min(candle.open, candle.close));
@@ -193,7 +194,7 @@ const Chart = ({ candles, hovered, onHover, price, width }: ChartProps) => {
       {last === undefined ? null : (
         <g>
           <line
-            stroke={PALETTE.selection}
+            stroke={palette.selection}
             strokeDasharray="4 3"
             x1={0}
             x2={plot}
@@ -201,7 +202,7 @@ const Chart = ({ candles, hovered, onHover, price, width }: ChartProps) => {
             y2={yOf(last)}
           />
           <rect
-            fill={PALETTE.selection}
+            fill={palette.selection}
             height={16}
             rx={8}
             width={AXIS - 2}
@@ -242,7 +243,13 @@ const CandleReadout = ({ candle }: { candle: Candle }) => {
           <span className="font-medium">{value}</span>
         </span>
       ))}
-      <span className={up ? "text-emerald-700" : "text-rose-700"}>
+      <span
+        className={
+          up
+            ? "text-emerald-700 dark:text-emerald-300"
+            : "text-rose-700 dark:text-rose-400"
+        }
+      >
         {formatSignedPercent(change)}
       </span>
       <span className="text-muted-foreground">
@@ -264,7 +271,9 @@ const Headline = () => {
         <span
           className={cn(
             "text-xs font-medium",
-            ticker.change >= 0 ? "text-emerald-700" : "text-rose-700"
+            ticker.change >= 0
+              ? "text-emerald-700 dark:text-emerald-300"
+              : "text-rose-700 dark:text-rose-400"
           )}
         >
           {formatSignedPercent(ticker.changePercent)} · 24h
@@ -274,7 +283,10 @@ const Headline = () => {
   );
 };
 
-/** Bitcoin's price in candles of the chosen length, live from Binance. */
+/**
+ * Bitcoin's price in candles of the chosen length, live from Binance. Bare:
+ * it sits in a dock.
+ */
 export const PriceChart = ({ className }: { className?: string }) => {
   const interval = useViewStore((state) => state.interval);
   const { setInterval } = useViewActions();
@@ -293,10 +305,7 @@ export const PriceChart = ({ className }: { className?: string }) => {
   };
 
   return (
-    <Panel
-      aria-label="Price chart"
-      className={cn("flex flex-col gap-2 p-3", className)}
-    >
+    <div className={cn("flex flex-col gap-2 p-3", className)}>
       <div className="flex min-h-8 items-center gap-3">
         <div className="min-w-0 flex-1">
           <PanelEyebrow>BTC / USDT</PanelEyebrow>
@@ -329,6 +338,6 @@ export const PriceChart = ({ className }: { className?: string }) => {
           <Skeleton className="size-full rounded-xl" />
         )}
       </div>
-    </Panel>
+    </div>
   );
 };

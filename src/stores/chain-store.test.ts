@@ -9,6 +9,7 @@ import {
   lastBlockTime,
   mergeBlocks,
   receiveUpdate,
+  useChainStore,
 } from "./chain-store";
 import type { ChainData, NextBlock } from "./chain-store";
 
@@ -202,6 +203,26 @@ describe("receiveUpdate", () => {
     expect(state.vBytesPerSecond).toBe(1800);
     expect(state.blocks).toBe(live.blocks);
     expect(state.nextBlock).toBe(live.nextBlock);
+  });
+});
+
+describe("reset", () => {
+  test("forgets everything the last source sent", () => {
+    const { actions } = useChainStore.getState();
+    actions.receive({
+      blocks: [block(100)],
+      fees: { economy: 2, fastest: 9, halfHour: 6, hour: 4, minimum: 1 },
+      vBytesPerSecond: 1800,
+    });
+    actions.setHashrate({ current: 1e21, difficulty: 1e14 });
+    actions.setStatus("open");
+    actions.reset();
+    const state = useChainStore.getState();
+    expect(state).toMatchObject({ blocks: [], status: "connecting" });
+    expect(state.fees).toBeUndefined();
+    expect(state.hashrate).toBeUndefined();
+    expect(state.vBytesPerSecond).toBeUndefined();
+    expect(state.actions).toBe(actions);
   });
 });
 

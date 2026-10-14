@@ -27,8 +27,6 @@ import { show } from "@/stores/selection";
 import { useViewActions, useViewStore } from "@/stores/view-store";
 import type { ListTab } from "@/stores/view-store";
 
-import { Panel } from "./panel";
-
 /** A block found live counts as new for this long. */
 const NEW_FOR = 60_000;
 /** The mempool's blocks-to-be listed one by one: the next block and the ghosts. */
@@ -69,7 +67,7 @@ const Row = ({ children, sceneKey, selected }: RowProps) => {
       <button
         aria-current={selected || undefined}
         className={cn(
-          "flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors outline-none hover:bg-slate-100/80 focus-visible:bg-slate-100/80",
+          "hover:bg-accent focus-visible:bg-accent flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors outline-none",
           selected && "bg-primary/8 ring-primary/20 hover:bg-primary/10 ring-1"
         )}
         onBlur={handleLeave}
@@ -109,7 +107,7 @@ const Lines = ({
 const FeeTag = ({ rate }: { rate: number }) => (
   <span className="flex items-center justify-end gap-1.5 text-xs font-medium tabular-nums">
     <span
-      className="size-2 shrink-0 rounded-full ring-1 ring-slate-900/10"
+      className="ring-foreground/10 size-2 shrink-0 rounded-full ring-1"
       style={{ background: feeColour(rate) }}
     />
     ~{formatRate(rate)} sat/vB
@@ -140,7 +138,7 @@ const PoolAvatar = ({ block }: { block: Block }) => (
 );
 
 const NewTag = () => (
-  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 px-1.5 text-[10px] font-semibold tracking-wide text-emerald-700 uppercase">
+  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 px-1.5 text-[10px] font-semibold tracking-wide text-emerald-700 uppercase dark:bg-emerald-500/20 dark:text-emerald-300">
     <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
     New
   </span>
@@ -179,7 +177,7 @@ const BlockRow = ({ arrived, block, now, selected }: BlockRowProps) => (
 /** A tile in the colours of a block-to-be's fees, cheapest to dearest. */
 const FeeSwatch = ({ feeRange }: { feeRange: readonly number[] }) => (
   <span
-    className="size-9 shrink-0 rounded-xl ring-1 ring-slate-900/10"
+    className="ring-foreground/10 size-9 shrink-0 rounded-xl ring-1"
     style={{ background: feeGradient(feeRange[0], feeRange.at(-1)) }}
   />
 );
@@ -342,12 +340,15 @@ const useQueuedBlocks = () =>
   });
 
 const Count = ({ children }: { children: ReactNode }) => (
-  <span className="text-muted-foreground rounded-full bg-slate-500/10 px-1.5 text-[11px] tabular-nums">
+  <span className="text-muted-foreground bg-muted-foreground/10 rounded-full px-1.5 text-[11px] tabular-nums">
     {children}
   </span>
 );
 
-/** The newest blocks, and the blocks the mempool would fill next. */
+/**
+ * The newest blocks, and the blocks the mempool would fill next, in tabs.
+ * Bare: it sits in a dock or a panel.
+ */
 export const BlocksList = ({
   className,
   listClassName,
@@ -370,7 +371,7 @@ export const BlocksList = ({
   };
 
   return (
-    <Panel aria-label="Blocks" className={cn("flex flex-col p-2", className)}>
+    <div className={cn("flex flex-col p-2", className)}>
       <Tabs
         className="min-h-0 flex-1 gap-1"
         onValueChange={handleTabChange}
@@ -397,6 +398,6 @@ export const BlocksList = ({
           </ScrollArea>
         </TabsContent>
       </Tabs>
-    </Panel>
+    </div>
   );
 };

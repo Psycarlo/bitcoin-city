@@ -29,7 +29,7 @@ import {
   projectedSlot,
   QUEUE_SLOT,
 } from "../layout";
-import { PALETTE } from "../palette";
+import { usePalette } from "../palette";
 import { registerLocator } from "../positions";
 import { invalidateShadows } from "../shadows";
 import { useDisposable } from "../use-disposable";
@@ -127,6 +127,7 @@ const GhostPlot = ({ block, index }: GhostPlotProps) => {
   const heightRef = useRef(0);
   const highlight = useHighlight(key);
   const handlers = usePlotHandlers(key);
+  const palette = usePalette();
   const goal = block ? ghostHeight(block.vsize) : 0;
 
   useLayoutEffect(() => {
@@ -166,7 +167,7 @@ const GhostPlot = ({ block, index }: GhostPlotProps) => {
           ref={meshRef}
           renderOrder={1}
         >
-          <Edges color={PALETTE.projectedEdge} threshold={15} />
+          <Edges color={palette.projectedEdge} threshold={15} />
         </mesh>
         <PlotLabel
           colour={block ? feeColour(block.medianFee) : undefined}

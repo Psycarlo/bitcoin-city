@@ -23,7 +23,7 @@ import {
   QUEUE_SLOT,
   TIP_SLOT,
 } from "../layout";
-import { PALETTE } from "../palette";
+import { paint, paintGlow } from "../paint";
 import { invalidateShadows } from "../shadows";
 
 /**
@@ -38,23 +38,21 @@ const STRETCH = 1.4;
 const OFFSET = 8.5;
 const STANDING_HEIGHT = 18;
 const LYING_HEIGHT = 16;
-const LINK_MATERIAL = new MeshLambertMaterial({ color: PALETTE.link });
-const LIVE_MATERIAL = new MeshLambertMaterial({
-  color: PALETTE.linkLive,
-  emissive: PALETTE.linkLive,
-  emissiveIntensity: 0.2,
-});
+const LINK_MATERIAL = paint(new MeshLambertMaterial(), "link");
+const LIVE_MATERIAL = paintGlow(
+  paint(new MeshLambertMaterial({ emissiveIntensity: 0.2 }), "linkLive"),
+  "linkLive"
+);
 const LIVE_PULSE = 2.4;
 const LIVE_GLOW = { max: 0.55, min: 0.1 } as const;
 const CAPACITY = CONFIRMED_SHOWN * 2;
 
 /** Transactions on their way to the next block, through each avenue of the queue. */
 const DOT = new SphereGeometry(4.5, 12, 8);
-const DOT_MATERIAL = new MeshLambertMaterial({
-  color: PALETTE.linkLive,
-  emissive: PALETTE.linkLive,
-  emissiveIntensity: 0.35,
-});
+const DOT_MATERIAL = paintGlow(
+  paint(new MeshLambertMaterial({ emissiveIntensity: 0.35 }), "linkLive"),
+  "linkLive"
+);
 const DOTS_PER_GAP = 3;
 const FLOW_GAPS = NEXT_SLOT - QUEUE_SLOT;
 const DOTS = DOTS_PER_GAP * FLOW_GAPS;

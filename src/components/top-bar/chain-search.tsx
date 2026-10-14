@@ -32,6 +32,7 @@ import type { SearchHit } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { useChainStore } from "@/stores/chain-store";
 import { show } from "@/stores/selection";
+import { getSource } from "@/stores/source-store";
 import { useSummaryStore } from "@/stores/summary-store";
 
 const NO_BLOCKS: readonly Block[] = [];
@@ -41,7 +42,7 @@ const NO_SUMMARIES: Readonly<Record<string, readonly TxSummary[]>> = {};
 /** Below this width the field folds into a button. */
 const WIDE_QUERY = "(min-width: 640px)";
 const MINUTES_PER_BLOCK = 10;
-const LOOK_UP = "Look it up on mempool.space";
+const lookUp = () => `Look it up on ${getSource().label}`;
 
 interface HitView {
   Icon: LucideIcon;
@@ -88,7 +89,7 @@ const viewOf = (hit: SearchHit, { failed, now, tip }: ViewContext): HitView => {
     case "block-hash": {
       return {
         Icon: Search,
-        detail: LOOK_UP,
+        detail: lookUp(),
         mono: true,
         title: shortId(hit.hash, 10, 8),
       };
@@ -98,8 +99,8 @@ const viewOf = (hit: SearchHit, { failed, now, tip }: ViewContext): HitView => {
         Icon: Search,
         detail:
           failed === hit.height
-            ? "Could not reach mempool.space. Try again."
-            : LOOK_UP,
+            ? `Could not reach ${getSource().label}. Try again.`
+            : lookUp(),
         title: `Block ${formatHeight(hit.height)}`,
       };
     }
@@ -129,7 +130,7 @@ const viewOf = (hit: SearchHit, { failed, now, tip }: ViewContext): HitView => {
     default: {
       return {
         Icon: Search,
-        detail: LOOK_UP,
+        detail: lookUp(),
         mono: true,
         title: shortId(hit.txid, 10, 8),
       };
@@ -156,11 +157,11 @@ const SearchResult = ({ context, hit, onPick }: SearchResultProps) => {
       onClick={handleClick}
       value={hit}
     >
-      <span className="text-muted-foreground relative flex size-8 shrink-0 items-center justify-center rounded-lg bg-slate-100">
+      <span className="text-muted-foreground bg-muted relative flex size-8 shrink-0 items-center justify-center rounded-lg">
         <Icon className="size-4" />
         {colour ? (
           <span
-            className="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full ring-2 ring-white"
+            className="ring-card absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full ring-2"
             style={{ background: colour }}
           />
         ) : null}
@@ -286,7 +287,7 @@ export const ChainSearch = () => {
 
   const field = (
     <div
-      className="ring-primary/30 flex h-10 w-full min-w-0 items-center gap-2 rounded-full bg-slate-100/80 px-3.5 transition-shadow focus-within:bg-white focus-within:ring-2"
+      className="ring-primary/30 bg-muted/80 focus-within:bg-card flex h-10 w-full min-w-0 items-center gap-2 rounded-full px-3.5 transition-shadow focus-within:ring-2"
       ref={anchorRef}
     >
       {busy ? (
@@ -305,7 +306,7 @@ export const ChainSearch = () => {
         spellCheck={false}
       />
       {wide ? (
-        <Kbd className="bg-white shadow-xs">/</Kbd>
+        <Kbd className="bg-card shadow-xs">/</Kbd>
       ) : (
         <Button
           aria-label="Close search"
@@ -323,7 +324,7 @@ export const ChainSearch = () => {
   let control = field;
   if (!wide) {
     control = unfolded ? (
-      <div className="absolute inset-0 z-20 flex items-center rounded-2xl bg-white px-3">
+      <div className="bg-card absolute inset-0 z-20 flex items-center rounded-2xl px-3">
         {field}
       </div>
     ) : (
@@ -356,7 +357,7 @@ export const ChainSearch = () => {
           className="z-50 outline-none"
           sideOffset={8}
         >
-          <Autocomplete.Popup className="bg-popover text-popover-foreground ring-foreground/5 data-closed:animate-out data-open:animate-in data-closed:fade-out-0 data-open:fade-in-0 w-(--anchor-width) max-w-(--available-width) min-w-80 origin-(--transform-origin) rounded-2xl p-1 shadow-2xl ring-1 duration-100">
+          <Autocomplete.Popup className="bg-popover text-popover-foreground ring-foreground/5 dark:ring-foreground/10 data-closed:animate-out data-open:animate-in data-closed:fade-out-0 data-open:fade-in-0 w-(--anchor-width) max-w-(--available-width) min-w-80 origin-(--transform-origin) rounded-2xl p-1 shadow-2xl ring-1 duration-100">
             <Autocomplete.Empty>
               <p className="text-muted-foreground px-3 py-4 text-sm text-pretty">
                 {searching

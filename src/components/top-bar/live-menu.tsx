@@ -1,5 +1,6 @@
 import {
   Blocks,
+  Server,
   ChartCandlestick,
   ChevronDown,
   RadioTower,
@@ -22,7 +23,9 @@ import { TONE_CLASSES } from "@/lib/tone";
 import type { Tone } from "@/lib/tone";
 import { cn } from "@/lib/utils";
 import { useChainStore, useTip } from "@/stores/chain-store";
+import { openSourceDialog } from "@/stores/dialog-store";
 import { usePriceStore } from "@/stores/price-store";
+import { useSource } from "@/stores/source-store";
 
 type Signal = "down" | "ok" | "waiting";
 
@@ -37,17 +40,17 @@ const SIGNALS: Record<Signal, SignalInfo> = {
   down: {
     dot: "bg-slate-400",
     label: "Offline",
-    pill: "border-slate-600/15 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-800",
+    pill: "border-foreground/10 bg-muted/60 text-foreground hover:bg-accent hover:text-foreground",
   },
   ok: {
     dot: "bg-current",
     label: "Live",
-    pill: "border-emerald-600/15 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800",
+    pill: "border-emerald-600/15 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 dark:border-emerald-400/25 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25 dark:hover:text-emerald-200",
   },
   waiting: {
     dot: "bg-amber-500",
     label: "Connecting",
-    pill: "border-amber-600/15 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800",
+    pill: "border-amber-600/15 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800 dark:border-amber-400/25 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25 dark:hover:text-amber-200",
   },
 };
 
@@ -128,6 +131,7 @@ export const LiveMenu = () => {
   const price = usePriceStore((state) => state.status);
   const last = usePriceStore((state) => state.last?.price);
   const tip = useTip();
+  const source = useSource();
   const statuses = [chain, price];
   const signal = signalOf(statuses);
   const label = labelOf(signal, statuses);
@@ -168,16 +172,16 @@ export const LiveMenu = () => {
             on their own.
           </PopoverDescription>
         </PopoverHeader>
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-border/70 divide-y">
           <Source
             detail={
               tip
                 ? `Blocks, mempool and fees · ${formatHeight(tip.height)}`
                 : "Blocks, mempool and fees"
             }
-            href="https://mempool.space"
+            href={source.web}
             Icon={Blocks}
-            name="mempool.space"
+            name={source.label}
             status={chain}
           />
           <Source
@@ -192,6 +196,15 @@ export const LiveMenu = () => {
             status={price}
           />
         </ul>
+        <Button
+          className="mt-1 self-start"
+          onClick={openSourceDialog}
+          size="sm"
+          variant="outline"
+        >
+          <Server />
+          Change data source
+        </Button>
       </PopoverContent>
     </Popover>
   );

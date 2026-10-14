@@ -28,6 +28,7 @@ import { CONFIRMED_SHOWN } from "@/scene/slots";
 import { useChainStore, useTip } from "@/stores/chain-store";
 import { usePrice } from "@/stores/price-store";
 import { show } from "@/stores/selection";
+import { getSource } from "@/stores/source-store";
 import { useSummary } from "@/stores/summary-store";
 import { useViewActions, useViewStore } from "@/stores/view-store";
 
@@ -105,8 +106,8 @@ const PayerRow = ({ tx }: { tx: TxSummary }) => {
     <li>
       <button
         className={cn(
-          "flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-xs transition-colors outline-none hover:bg-white focus-visible:bg-white",
-          selected && "bg-white"
+          "hover:bg-card focus-visible:bg-card dark:hover:bg-foreground/10 dark:focus-visible:bg-foreground/10 flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-xs transition-colors outline-none",
+          selected && "bg-card dark:bg-foreground/10"
         )}
         onBlur={handleLeave}
         onClick={handleClick}
@@ -116,7 +117,7 @@ const PayerRow = ({ tx }: { tx: TxSummary }) => {
         type="button"
       >
         <ColourDot colour={feeColour(tx.rate)} />
-        <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-slate-600">
+        <span className="text-muted-foreground min-w-0 flex-1 truncate font-mono text-[11px]">
           {shortId(tx.txid, 8, 8)}
         </span>
         <span className="text-muted-foreground shrink-0 tabular-nums">
@@ -145,7 +146,7 @@ const TopPayers = ({ txs }: { txs: readonly TxSummary[] }) => {
   }
   return (
     <Section title="Biggest fees">
-      <ul className="flex flex-col rounded-xl bg-slate-50 p-1 ring-1 ring-slate-100">
+      <ul className="bg-muted/60 ring-border/60 flex flex-col rounded-xl p-1 ring-1">
         {top.map((tx) => (
           <PayerRow key={tx.txid} tx={tx} />
         ))}
@@ -200,7 +201,7 @@ export const BlockDetailsView = ({
               <FocusAction sceneKey={blockKey(hash)} />
               <LinkAction
                 href={mempoolLinks.block(hash)}
-                label="Open on mempool.space"
+                label={`Open on ${getSource().label}`}
               />
               <CloseAction />
             </>
@@ -231,7 +232,7 @@ export const BlockDetailsView = ({
         {loading ? <LoadingRows /> : null}
         {error !== undefined && !block ? (
           <Note Icon={CircleAlert}>
-            Could not load this block from mempool.space.
+            Could not load this block from {getSource().label}.
           </Note>
         ) : null}
         {block ? (

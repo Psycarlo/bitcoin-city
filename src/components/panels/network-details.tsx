@@ -1,5 +1,3 @@
-import { House, MousePointerClick } from "lucide-react";
-
 import { Progress } from "@/components/ui/progress";
 import { useClock } from "@/hooks/use-clock";
 import {
@@ -26,17 +24,15 @@ import {
   formatUsdWhole,
   formatVsize,
 } from "@/lib/format";
-import { sendCameraCommand } from "@/stores/camera-store";
 import { useChainStore, useLastBlockTime, useTip } from "@/stores/chain-store";
 import { usePrice } from "@/stores/price-store";
+import { useSource } from "@/stores/source-store";
 
 import {
   DetailBody,
   DetailHeader,
   DetailRows,
   DetailTop,
-  IconAction,
-  Note,
   Section,
   StatTiles,
 } from "./detail-parts";
@@ -80,10 +76,6 @@ const Milestone = ({
     ) : null}
   </Section>
 );
-
-const handleHome = () => {
-  sendCameraCommand({ kind: "home" });
-};
 
 /** The fee to pay for each wait, and what a simple payment costs at it. */
 const FeeEstimates = () => {
@@ -129,7 +121,7 @@ const FeeEstimates = () => {
   );
 };
 
-/** The network at large, while nothing is picked. */
+/** The network at large: mining, the next milestones, fees and the mempool. */
 export const NetworkDetailsView = () => {
   const tip = useTip();
   const lastBlock = useLastBlockTime();
@@ -138,6 +130,7 @@ export const NetworkDetailsView = () => {
   const mempool = useChainStore((state) => state.mempool);
   const incoming = useChainStore((state) => state.vBytesPerSecond);
   const price = usePrice();
+  const { label } = useSource();
   const now = useClock(10_000);
   const halving = tip ? halvingOf(tip.height) : undefined;
   const blockTime = difficulty?.timeAvg ?? TARGET_BLOCK_TIME;
@@ -172,16 +165,11 @@ export const NetworkDetailsView = () => {
     <>
       <DetailTop>
         <DetailHeader
-          actions={
-            <IconAction label="Back to the overview" onClick={handleHome}>
-              <House />
-            </IconAction>
-          }
           eyebrow="Network"
           subtitle={
             tip && lastBlock !== undefined
               ? `Block ${formatHeight(tip.height)} · ${formatAgo(lastBlock, now)}`
-              : "Connecting to mempool.space…"
+              : `Connecting to ${label}…`
           }
           title="Bitcoin"
         />
@@ -226,10 +214,6 @@ export const NetworkDetailsView = () => {
         ) : null}
         <FeeEstimates />
         <DetailRows rows={rows} />
-        <Note Icon={MousePointerClick}>
-          Pick a building to see its transaction, or a block&apos;s label to see
-          the block. Drag to move, right-drag to turn, scroll to zoom.
-        </Note>
       </DetailBody>
     </>
   );

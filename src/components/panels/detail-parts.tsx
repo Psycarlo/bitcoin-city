@@ -98,7 +98,7 @@ const hasValue = (row: DetailRow): row is readonly [string, string] =>
   row[1] !== undefined && row[1] !== DASH;
 
 export const DetailRows = ({ rows }: { rows: readonly DetailRow[] }) => (
-  <dl className="divide-y divide-slate-100">
+  <dl className="divide-border/70 divide-y">
     {rows.filter(hasValue).map(([label, value]) => (
       <div
         className="flex items-baseline justify-between gap-4 py-2 text-sm"
@@ -123,7 +123,7 @@ export const ColourDot = ({
 }) => (
   <span
     className={cn(
-      "size-2 shrink-0 rounded-full ring-1 ring-slate-900/10",
+      "ring-foreground/10 size-2 shrink-0 rounded-full ring-1",
       className
     )}
     style={{ background: colour }}
@@ -149,7 +149,7 @@ export const StatTiles = ({
   <dl className={cn("grid grid-cols-3 gap-2", className)}>
     {stats.map(({ colour, hint, label, value }) => (
       <div
-        className="min-w-0 rounded-xl bg-slate-50 px-2.5 py-2 ring-1 ring-slate-100"
+        className="bg-muted/60 ring-border/60 min-w-0 rounded-xl px-2.5 py-2 ring-1"
         key={label}
       >
         <dt className="text-muted-foreground truncate text-[11px]">{label}</dt>
@@ -188,7 +188,7 @@ export const Section = ({
 
 /** Raw text, such as a hash, in a quiet monospace box. */
 export const MonoBox = ({ children }: { children: ReactNode }) => (
-  <p className="rounded-xl bg-slate-50 p-3 font-mono text-[11px] leading-relaxed break-all text-slate-600 ring-1 ring-slate-100">
+  <p className="bg-muted/60 text-muted-foreground ring-border/60 rounded-xl p-3 font-mono text-[11px] leading-relaxed break-all ring-1">
     {children}
   </p>
 );
@@ -253,12 +253,12 @@ export const FeeRange = ({
       title="Fee rates"
     >
       <div
-        className="relative h-2.5 rounded-full ring-1 ring-slate-900/5"
+        className="ring-foreground/5 relative h-2.5 rounded-full ring-1"
         style={{ background: feeGradient(low, high) }}
       >
         {median === undefined ? null : (
           <span
-            className="absolute top-1/2 size-3.5 -translate-1/2 rounded-full border-2 border-white shadow-sm ring-1 ring-slate-900/15"
+            className="border-card ring-foreground/15 absolute top-1/2 size-3.5 -translate-1/2 rounded-full border-2 shadow-sm ring-1"
             style={{
               background: feeColour(median),
               left: `${logShare(median, low, high) * 100}%`,

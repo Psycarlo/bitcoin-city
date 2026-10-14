@@ -9,6 +9,17 @@
       content="BlockCity: the Bitcoin blockchain, live, as a 3D city. Every block a district, every transaction a building."
     />
     <title>BlockCity</title>
+    <script>
+      // The saved theme (else the system's), before anything paints.
+      try {
+        var saved = JSON.parse(localStorage.getItem("blockcity.theme") || "{}");
+        var theme =
+          (saved.state && saved.state.theme) ||
+          (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        document.documentElement.classList.toggle("dark", theme === "dark");
+        document.documentElement.style.colorScheme = theme;
+      } catch (error) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

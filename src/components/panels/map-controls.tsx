@@ -54,7 +54,7 @@ const ControlButton = ({
       render={
         <Button
           aria-label={label}
-          className="rounded-full text-slate-600"
+          className="text-muted-foreground hover:text-foreground rounded-full"
           onClick={onPress}
           size="icon-sm"
           variant="ghost"
@@ -83,7 +83,7 @@ export const MapControls = ({ className }: { className?: string }) => {
     <nav
       aria-label="Map"
       className={cn(
-        "pointer-events-auto flex w-fit flex-col items-center gap-1 rounded-full bg-white/95 p-1 shadow-sm ring-1 shadow-slate-900/5 ring-slate-900/5 backdrop-blur-md",
+        "bg-card/95 ring-foreground/5 dark:ring-foreground/10 pointer-events-auto flex w-fit flex-col items-center gap-1 rounded-full p-1 shadow-sm ring-1 shadow-black/5 backdrop-blur-md",
         className
       )}
     >

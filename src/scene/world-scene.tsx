@@ -10,29 +10,34 @@ import { HoverCard } from "./hover-card";
 import { HtmlLayer } from "./html-layer";
 import { LabelDeclutter } from "./label-declutter";
 import { ChainLayer } from "./layers/chain";
-import { Ground } from "./layers/ground";
+import { Island } from "./layers/island";
 import { LinksLayer } from "./layers/links";
 import { MempoolLayer } from "./layers/mempool";
 import { Skyline, Terrace } from "./layers/skyline";
 import { Trees } from "./layers/trees";
+import { Water } from "./layers/water";
 import { Lights } from "./lights";
 import { Markers, PointerCursor } from "./markers";
-import { PALETTE } from "./palette";
+import { usePalette } from "./palette";
 import { ShadowUpdater } from "./shadows";
 
 interface WorldSceneProps {
   /** Room the UI panels take around the edges, kept clear by the camera. */
   insets: Insets;
+  /** Room a panel floating over the city takes, which what is picked is framed clear of. */
+  panel: Insets;
 }
 
 /**
- * The chain as a city on a table: the mempool's blocks-to-be queue up at the
- * front, the newest blocks follow them, each a city of its transactions, and
- * the price stands behind as a skyline.
+ * The chain as a city on an island: the mempool's blocks-to-be queue up at
+ * the front, the newest blocks follow them, each a city of its transactions,
+ * and the price stands behind as a skyline. The oldest block leaves by the
+ * dock, into the sea.
  */
-export const WorldScene = ({ insets }: WorldSceneProps) => {
+export const WorldScene = ({ insets, panel }: WorldSceneProps) => {
   const skyline = useViewStore((state) => state.toggles.skyline);
   const trees = useViewStore((state) => state.toggles.trees);
+  const palette = usePalette();
   const [frame, setFrame] = useState<HTMLDivElement | null>(null);
 
   return (
@@ -52,10 +57,11 @@ export const WorldScene = ({ insets }: WorldSceneProps) => {
           orthographic
           shadows="percentage"
         >
-          <color args={[PALETTE.background]} attach="background" />
+          <color args={[palette.background]} attach="background" />
           <Lights />
           <ShadowUpdater />
-          <Ground />
+          <Water />
+          <Island />
           <Terrace />
           <ChainLayer />
           <MempoolLayer />
@@ -64,7 +70,7 @@ export const WorldScene = ({ insets }: WorldSceneProps) => {
           {trees ? <Trees /> : null}
           <Markers />
           <HoverCard />
-          <CameraRig frame={frame} insets={insets} />
+          <CameraRig frame={frame} insets={insets} panel={panel} />
           <LabelDeclutter />
           <PointerCursor />
         </Canvas>

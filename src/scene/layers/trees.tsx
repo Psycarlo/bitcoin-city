@@ -1,14 +1,19 @@
 import { useEffect, useMemo } from "react";
 import {
+  Color,
   CylinderGeometry,
   IcosahedronGeometry,
   MeshLambertMaterial,
 } from "three";
 
+import { getTheme } from "@/stores/theme-store";
+
 import { createInstances, disposeInstances } from "../instances";
 import type { Placement } from "../instances";
-import { GAP, GRID_HALF_X, GRID_HALF_Z, PITCH, TERRACE, TILE } from "../layout";
-import { PALETTE, TREE_CROWNS } from "../palette";
+import { CROSSINGS, inGarden, onDock, PAVED, ROAD_Y } from "../island-plan";
+import { TERRACE, TILE, TILE_RADIUS } from "../layout";
+import { onPalette, paint } from "../paint";
+import { TREE_CROWNS } from "../palette";
 
 /** Lollipop trees, larger than life so they read from afar. */
 const TRUNK_HEIGHT = 5;
@@ -23,11 +28,11 @@ const SPACING = 38;
 const DENSITY = 0.36;
 /** Room kept from the edge of the table, so crowns do not hang over it. */
 const EDGE = 24;
-/** Room kept around the plots and the terrace. */
+/** Room kept around the roads, the terrace, the dock and the gardens. */
 const CLEARANCE = 14;
-/** Matches the ground's rounded corners. */
-const CORNER_RADIUS = 72;
-/** Trees at the crossings of the avenues are smaller, to fit. */
+/** Matches the grass's rounded corners. */
+const CORNER_RADIUS = TILE_RADIUS;
+/** Trees on the roundabouts are smaller, to fit. */
 const CROSSING_SCALE = 1.5;
 const SEED = 21_000_000;
 
@@ -66,16 +71,18 @@ const onTable = (x: number, z: number, edge: number) => {
   );
 };
 
-/** Whether a point falls on the plots, the terrace or the ground between them. */
+/** Whether a point falls on the roads, the terrace or the ground between them, the dock or a garden. */
 const built = (x: number, z: number) =>
-  Math.abs(x) <= GRID_HALF_X + CLEARANCE &&
-  z <= GRID_HALF_Z + CLEARANCE &&
-  z >= TERRACE.centreZ - TERRACE.depth / 2 - CLEARANCE;
+  (Math.abs(x) <= PAVED.halfX + CLEARANCE &&
+    z <= PAVED.halfZ + CLEARANCE &&
+    z >= TERRACE.centreZ - TERRACE.depth / 2 - CLEARANCE) ||
+  onDock(x, z, CLEARANCE) ||
+  inGarden(x, z, CLEARANCE);
 
-/** Trees scattered around the border, and one at each crossing of the avenues. */
+/** Trees scattered around the border, and one on each roundabout. */
 const plantTrees = () => {
   const random = randomFrom(SEED);
-  const trees: [x: number, z: number, scale: number][] = [];
+  const trees: [x: number, z: number, scale: number, y: number][] = [];
   for (let z = TILE.minZ; z <= TILE.maxZ; z += SPACING) {
     for (let x = TILE.minX; x <= TILE.maxX; x += SPACING) {
       const treeX = x + (random() - 0.5) * SPACING;
@@ -83,28 +90,23 @@ const plantTrees = () => {
       const keep = random() < DENSITY;
       const scale = SCALE * (1 + (random() * 2 - 1) * SCALE_SPREAD);
       if (keep && onTable(treeX, treeZ, EDGE) && !built(treeX, treeZ)) {
-        trees.push([treeX, treeZ, scale]);
+        trees.push([treeX, treeZ, scale, 0]);
       }
     }
   }
-  // The avenues cross between the corners of four plots.
-  const half = PITCH / 2;
-  for (const x of [-3, -1, 1, 3].map((step) => step * half)) {
-    for (const z of [-2, 0, 2].map((step) => step * half)) {
-      const jitter = (random() - 0.5) * (GAP / 6);
-      trees.push([
-        x + jitter,
-        z - jitter,
-        CROSSING_SCALE * (0.9 + random() * 0.2),
-      ]);
-    }
+  // On the roundabouts' grass, above the road.
+  for (const [x, z] of CROSSINGS) {
+    trees.push([x, z, CROSSING_SCALE * (0.9 + random() * 0.2), ROAD_Y + 2]);
   }
   return trees;
 };
 
+/** Shared by the trunks for as long as the page lives (it follows the theme). */
+const TRUNK_MATERIAL = paint(new MeshLambertMaterial(), "trunk");
+
 /** Decorative trees: a trunk and a faceted crown each, in two draw calls. */
 export const Trees = () => {
-  const meshes = useMemo(() => {
+  const [trunks, crowns] = useMemo(() => {
     const trunk = new CylinderGeometry(
       TRUNK_RADIUS * 0.75,
       TRUNK_RADIUS,
@@ -114,38 +116,50 @@ export const Trees = () => {
     trunk.translate(0, TRUNK_HEIGHT / 2, 0);
     const crown = new IcosahedronGeometry(CROWN_RADIUS, 1);
     crown.translate(0, TRUNK_HEIGHT + CROWN_RADIUS * 0.7, 0);
-    const placements = plantTrees().map(([x, z, scale], index): Placement => ({
-      colour: TREE_CROWNS[index % TREE_CROWNS.length],
-      position: [x, 0, z],
-      rotationY: index,
-      scale: [scale, scale, scale],
-    }));
+    const placements = plantTrees().map(
+      ([x, z, scale, y], index): Placement => ({
+        position: [x, y, z],
+        rotationY: index,
+        scale: [scale, scale, scale],
+      })
+    );
     return [
-      createInstances(
-        trunk,
-        new MeshLambertMaterial({ color: PALETTE.trunk }),
-        placements
-      ),
+      createInstances(trunk, TRUNK_MATERIAL, placements),
       createInstances(
         crown,
         new MeshLambertMaterial({ color: "#ffffff", flatShading: true }),
         placements
       ),
-    ];
+    ] as const;
   }, []);
+
+  useEffect(
+    () =>
+      onPalette(() => {
+        const tints = TREE_CROWNS[getTheme()];
+        const colour = new Color();
+        for (let index = 0; index < crowns.count; index += 1) {
+          crowns.setColorAt(index, colour.set(tints[index % tints.length]));
+        }
+        if (crowns.instanceColor) {
+          crowns.instanceColor.needsUpdate = true;
+        }
+      }),
+    [crowns]
+  );
   useEffect(
     () => () => {
-      for (const mesh of meshes) {
-        disposeInstances(mesh);
-      }
+      // The trunks' material is shared: only their geometry goes.
+      trunks.geometry.dispose();
+      trunks.dispose();
+      disposeInstances(crowns);
     },
-    [meshes]
+    [crowns, trunks]
   );
   return (
     <group>
-      {meshes.map((mesh) => (
-        <primitive castShadow key={mesh.uuid} object={mesh} receiveShadow />
-      ))}
+      <primitive castShadow object={trunks} receiveShadow />
+      <primitive castShadow object={crowns} receiveShadow />
     </group>
   );
 };

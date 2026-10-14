@@ -15,7 +15,7 @@ import type { Group, LineSegments, Mesh } from "three";
 import type { SceneKey } from "@/lib/scene-key";
 import { useViewStore } from "@/stores/view-store";
 
-import { PALETTE } from "./palette";
+import { paint, paintGlow } from "./paint";
 import { locate } from "./positions";
 
 const TX_PREFIX = "tx:";
@@ -37,18 +37,19 @@ const OUTLINE = new EdgesGeometry(
   new BoxGeometry(1, 1, 1).translate(0, 0.5, 0)
 );
 const OUTLINE_MATERIALS = {
-  hovered: new LineBasicMaterial({ color: PALETTE.hover }),
-  selected: new LineBasicMaterial({ color: PALETTE.selection }),
+  hovered: paint(new LineBasicMaterial(), "hover"),
+  selected: paint(new LineBasicMaterial(), "selection"),
 };
 const PIN = new ConeGeometry(7, PIN_HEIGHT, 4)
   .rotateX(Math.PI)
   .translate(0, PIN_HEIGHT / 2, 0);
-const PIN_MATERIAL = new MeshLambertMaterial({
-  color: PALETTE.selection,
-  depthTest: false,
-  emissive: PALETTE.selection,
-  emissiveIntensity: 0.3,
-});
+const PIN_MATERIAL = paintGlow(
+  paint(
+    new MeshLambertMaterial({ depthTest: false, emissiveIntensity: 0.3 }),
+    "selection"
+  ),
+  "selection"
+);
 
 const centre = new Vector3();
 const extent = new Vector3();
